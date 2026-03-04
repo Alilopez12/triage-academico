@@ -2,4 +2,5 @@
 
 El siguiente diagrama UML representa el modelo de dominio del sistema, incluyendo las entidades principales, sus atributos y las relaciones entre ellas.
 
-<img width="1802" height="1182" alt="sistema-triage" src="https://github.com/user-attachments/assets/7c07ad18-89e7-4e89-8ef7-f3989ad5dbdd" />
+<img width="2061" height="2186" alt="Diagrama_final" src="https://github.com/user-attachments/assets/02d6d120-ad4d-460d-9759-c9bc81f3a20c" />
+
