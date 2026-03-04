@@ -2,796 +2,215 @@ openapi: 3.0.0
 info:
   title: API Sistema de Triage Académico
   version: 1.0.0
-  description: >
-    Contrato OpenAPI para el sistema de Triage y Gestión de Solicitudes Académicas.
-    Incluye registro, clasificación, priorización, asignación, cambios de estado,
-    historial auditable y consultas con filtros.
+  description: API para gestionar solicitudes académicas y su ciclo de vida.
 
 servers:
   - url: http://localhost:8080
 
-tags:
-  - name: Solicitudes
-    description: Operaciones sobre el ciclo de vida de solicitudes académicas
-  - name: Historial
-    description: Consulta del historial auditable por solicitud
-  - name: Catalogos
-    description: Tipos, canales y prioridades (si se exponen como recursos)
-  - name: Usuarios
-    description: Usuarios del sistema (solicitantes y responsables)
-
 paths:
-  /api/solicitudes:
+
+  /solicitudes:
     post:
-      tags: [Solicitudes]
-      summary: Registrar una nueva solicitud
+      summary: Crear una nueva solicitud
       operationId: crearSolicitud
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SolicitudCreateRequest'
-            examples:
-              ejemplo:
-                value:
-                  descripcion: "No puedo registrar la asignatura X"
-                  tipoSolicitud: "REGISTRO_ASIGNATURA"
-                  canalOrigen: "SAC"
-                  impactoAcademico: "ALTO"
-                  fechaLimite: "2026-04-10"
-                  solicitanteId: 12
+              $ref: '#/components/schemas/SolicitudCreate'
       responses:
         '201':
-          description: Solicitud creada exitosamente (estado REGISTRADA)
+          description: Solicitud creada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SolicitudResponse'
+                $ref: '#/components/schemas/Solicitud'
         '400':
           description: Datos inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        '404':
-          description: Solicitante no encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '500':
-          description: Error interno del servidor
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
     get:
-      tags: [Solicitudes]
-      summary: Consultar solicitudes con filtros
+      summary: Listar solicitudes
       operationId: listarSolicitudes
-      parameters:
-        - name: estado
-          in: query
-          required: false
-          schema:
-            $ref: '#/components/schemas/EstadoSolicitud'
-        - name: tipoSolicitud
-          in: query
-          required: false
-          schema:
-            $ref: '#/components/schemas/TipoSolicitud'
-        - name: prioridad
-          in: query
-          required: false
-          schema:
-            $ref: '#/components/schemas/Prioridad'
-        - name: responsableId
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int64
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 0
-            default: 0
-        - name: size
-          in: query
-          required: false
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 20
       responses:
         '200':
           description: Lista de solicitudes
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SolicitudListResponse'
-        '400':
-          description: Parámetros inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        '500':
-          description: Error interno
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                type: array
+                items:
+                  $ref: '#/components/schemas/Solicitud'
 
-  /api/solicitudes/{id}:
+  /solicitudes/{id}:
     get:
-      tags: [Solicitudes]
-      summary: Obtener detalle de una solicitud
-      operationId: obtenerSolicitudPorId
+      summary: Obtener una solicitud por id
+      operationId: obtenerSolicitud
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
-            format: int64
       responses:
         '200':
-          description: Detalle de solicitud
+          description: Solicitud encontrada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SolicitudResponse'
+                $ref: '#/components/schemas/Solicitud'
         '404':
           description: Solicitud no encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
-  # ----------------------------
-  # CAMBIOS DE ESTADO
-  # ----------------------------
-
-  /api/solicitudes/{id}/clasificacion:
+  /solicitudes/{id}/clasificar:
     patch:
-      tags: [Solicitudes]
-      summary: Clasificar una solicitud (REGISTRADA → CLASIFICADA)
+      summary: Cambiar estado de REGISTRADA a CLASIFICADA
       operationId: clasificarSolicitud
-      security:
-        - BearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
-            format: int64
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ClasificarRequest'
-            examples:
-              ejemplo:
-                value:
-                  tipoSolicitud: "HOMOLOGACION"
-                  observacion: "Clasificada por análisis de descripción"
       responses:
         '200':
-          description: Solicitud clasificada (nuevo estado CLASIFICADA)
+          description: Solicitud clasificada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SolicitudResponse'
-        '400':
-          description: Datos inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        '404':
-          description: Solicitud no encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/Solicitud'
         '409':
-          description: Transición inválida (estado actual no permite clasificar)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: No autenticado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Sin permisos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          description: Transición de estado no permitida
 
-  /api/solicitudes/{id}/iniciar-atencion:
+  /solicitudes/{id}/iniciar-atencion:
     patch:
-      tags: [Solicitudes]
-      summary: Iniciar atención (CLASIFICADA → EN_ATENCION)
+      summary: Cambiar estado de CLASIFICADA a EN_ATENCION
       operationId: iniciarAtencion
-      security:
-        - BearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
-            format: int64
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/IniciarAtencionRequest'
-            examples:
-              ejemplo:
-                value:
-                  responsableId: 7
-                  observacion: "Se asigna responsable y se inicia gestión"
       responses:
         '200':
-          description: Atención iniciada (nuevo estado EN_ATENCION)
+          description: Atención iniciada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SolicitudResponse'
-        '400':
-          description: Datos inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        '404':
-          description: Solicitud o responsable no encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/Solicitud'
         '409':
-          description: Transición inválida o responsable inactivo/no asignable
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: No autenticado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Sin permisos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          description: Transición de estado no permitida
 
-  /api/solicitudes/{id}/marcar-atendida:
+  /solicitudes/{id}/marcar-atendida:
     patch:
-      tags: [Solicitudes]
-      summary: Marcar como atendida (EN_ATENCION → ATENDIDA)
+      summary: Cambiar estado de EN_ATENCION a ATENDIDA
       operationId: marcarAtendida
-      security:
-        - BearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
-            format: int64
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ObservacionRequest'
-            examples:
-              ejemplo:
-                value:
-                  observacion: "Se resolvió el inconveniente y se notificó al solicitante"
       responses:
         '200':
-          description: Solicitud marcada como atendida (nuevo estado ATENDIDA)
+          description: Solicitud atendida
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SolicitudResponse'
-        '400':
-          description: Datos inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        '404':
-          description: Solicitud no encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/Solicitud'
         '409':
-          description: Transición inválida (estado actual no permite marcar atendida)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: No autenticado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Sin permisos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          description: Transición de estado no permitida
 
-  /api/solicitudes/{id}/cerrar:
+  /solicitudes/{id}/cerrar:
     patch:
-      tags: [Solicitudes]
-      summary: Cerrar solicitud (ATENDIDA → CERRADA)
+      summary: Cambiar estado de ATENDIDA a CERRADA
       operationId: cerrarSolicitud
-      security:
-        - BearerAuth: []
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
-            format: int64
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CerrarRequest'
-            examples:
-              ejemplo:
-                value:
-                  observacionCierre: "Caso cerrado, solución confirmada"
       responses:
         '200':
-          description: Solicitud cerrada (nuevo estado CERRADA)
+          description: Solicitud cerrada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SolicitudResponse'
-        '400':
-          description: Datos inválidos (observación de cierre requerida)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        '404':
-          description: Solicitud no encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: '#/components/schemas/Solicitud'
         '409':
-          description: Transición inválida (estado actual no permite cerrar)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '401':
-          description: No autenticado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Sin permisos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+          description: Transición de estado no permitida
 
-  # ----------------------------
-  # ACCIONES DE NEGOCIO
-  # ----------------------------
-
-  /api/solicitudes/{id}/prioridad:
-    patch:
-      tags: [Solicitudes]
-      summary: Asignar o actualizar prioridad y justificación (no permite si está CERRADA)
-      operationId: asignarPrioridad
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PrioridadRequest'
-            examples:
-              ejemplo:
-                value:
-                  prioridad: "ALTA"
-                  justificacion: "Impacto ALTO y fecha límite cercana"
-      responses:
-        '200':
-          description: Prioridad actualizada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SolicitudResponse'
-        '400':
-          description: Datos inválidos (justificación requerida)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        '404':
-          description: Solicitud no encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: No permitido (solicitud CERRADA)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/solicitudes/{id}/asignar:
-    patch:
-      tags: [Solicitudes]
-      summary: Asignar responsable (no permite si está CERRADA)
-      operationId: asignarResponsable
-      security:
-        - BearerAuth: []
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AsignarResponsableRequest'
-            examples:
-              ejemplo:
-                value:
-                  responsableId: 7
-                  observacion: "Asignación por disponibilidad del área"
-      responses:
-        '200':
-          description: Responsable asignado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SolicitudResponse'
-        '400':
-          description: Datos inválidos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ValidationErrorResponse'
-        '404':
-          description: Solicitud o responsable no encontrado
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: Responsable inactivo o solicitud CERRADA
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-
-  /api/solicitudes/{id}/historial:
-    get:
-      tags: [Historial]
-      summary: Consultar historial auditable de una solicitud
-      operationId: obtenerHistorial
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-            format: int64
-      responses:
-        '200':
-          description: Historial de movimientos
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HistorialListResponse'
-        '404':
-          description: Solicitud no encontrada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
 
 components:
+
   schemas:
-    SolicitudResponse:
+
+    Solicitud:
       type: object
       properties:
         id:
           type: integer
-          format: int64
         descripcion:
           type: string
-        fechaHoraCreacion:
-          type: string
-          format: date-time
-        fechaLimite:
-          type: string
-          format: date
-          nullable: true
-        impactoAcademico:
-          $ref: '#/components/schemas/ImpactoAcademico'
         estado:
           $ref: '#/components/schemas/EstadoSolicitud'
         tipoSolicitud:
           $ref: '#/components/schemas/TipoSolicitud'
-        canalOrigen:
-          $ref: '#/components/schemas/CanalOrigen'
         prioridad:
           $ref: '#/components/schemas/Prioridad'
-        justificacionPrioridad:
-          type: string
-          nullable: true
-        solicitanteId:
-          type: integer
-          format: int64
-        responsableId:
-          type: integer
-          format: int64
-          nullable: true
+        canalOrigen:
+          $ref: '#/components/schemas/CanalOrigen'
       required:
         - id
         - descripcion
-        - fechaHoraCreacion
-        - impactoAcademico
         - estado
-        - tipoSolicitud
-        - canalOrigen
-        - prioridad
-        - solicitanteId
 
-    SolicitudListResponse:
+    SolicitudCreate:
       type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/SolicitudResponse'
-        page:
-          type: integer
-        size:
-          type: integer
-        totalItems:
-          type: integer
-      required:
-        - items
-        - page
-        - size
-        - totalItems
-
-    HistorialMovimientoResponse:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-        fechaHora:
-          type: string
-          format: date-time
-        accion:
-          type: string
-        observacion:
-          type: string
-          nullable: true
-        ejecutadoPorId:
-          type: integer
-          format: int64
-      required:
-        - id
-        - fechaHora
-        - accion
-        - ejecutadoPorId
-
-    HistorialListResponse:
-      type: object
-      properties:
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/HistorialMovimientoResponse'
-      required:
-        - items
-
-    # ----------------------------
-    # REQUESTS
-    # ----------------------------
-    SolicitudCreateRequest:
-      type: object
-      required:
-        - descripcion
-        - canalOrigen
-        - impactoAcademico
-        - solicitanteId
       properties:
         descripcion:
           type: string
-          minLength: 5
-          maxLength: 5000
         tipoSolicitud:
           $ref: '#/components/schemas/TipoSolicitud'
         canalOrigen:
           $ref: '#/components/schemas/CanalOrigen'
-        impactoAcademico:
-          $ref: '#/components/schemas/ImpactoAcademico'
-        fechaLimite:
-          type: string
-          format: date
-          nullable: true
-        solicitanteId:
-          type: integer
-          format: int64
-
-    ClasificarRequest:
-      type: object
       required:
-        - tipoSolicitud
-      properties:
-        tipoSolicitud:
-          $ref: '#/components/schemas/TipoSolicitud'
-        observacion:
-          type: string
-          maxLength: 1000
+        - descripcion
+        - canalOrigen
 
-    IniciarAtencionRequest:
-      type: object
-      required:
-        - responsableId
-      properties:
-        responsableId:
-          type: integer
-          format: int64
-        observacion:
-          type: string
-          maxLength: 1000
-
-    ObservacionRequest:
-      type: object
-      properties:
-        observacion:
-          type: string
-          maxLength: 2000
-
-    CerrarRequest:
-      type: object
-      required:
-        - observacionCierre
-      properties:
-        observacionCierre:
-          type: string
-          minLength: 5
-          maxLength: 2000
-
-    PrioridadRequest:
-      type: object
-      required:
-        - prioridad
-        - justificacion
-      properties:
-        prioridad:
-          $ref: '#/components/schemas/Prioridad'
-        justificacion:
-          type: string
-          minLength: 5
-          maxLength: 2000
-
-    AsignarResponsableRequest:
-      type: object
-      required:
-        - responsableId
-      properties:
-        responsableId:
-          type: integer
-          format: int64
-        observacion:
-          type: string
-          maxLength: 1000
-
-    # ----------------------------
-    # ENUMS / CATALOGOS
-    # ----------------------------
     EstadoSolicitud:
       type: string
-      enum: [REGISTRADA, CLASIFICADA, EN_ATENCION, ATENDIDA, CERRADA]
-
-    Prioridad:
-      type: string
-      enum: [BAJA, MEDIA, ALTA]
-
-    ImpactoAcademico:
-      type: string
-      enum: [BAJO, MEDIO, ALTO]
+      description: Estados del ciclo de vida de una solicitud
+      enum:
+        - REGISTRADA
+        - CLASIFICADA
+        - EN_ATENCION
+        - ATENDIDA
+        - CERRADA
 
     TipoSolicitud:
       type: string
-      enum: [REGISTRO_ASIGNATURA, HOMOLOGACION, CANCELACION, CUPOS, CONSULTA_ACADEMICA]
+      enum:
+        - REGISTRO_ASIGNATURA
+        - HOMOLOGACION
+        - CANCELACION
+        - CUPOS
+        - CONSULTA
+
+    Prioridad:
+      type: string
+      enum:
+        - BAJA
+        - MEDIA
+        - ALTA
 
     CanalOrigen:
       type: string
-      enum: [PRESENCIAL, CORREO, SAC, CSU, TELEFONICO]
-
-
-
-    ErrorResponse:
-      type: object
-      required: [error, message]
-      properties:
-        error:
-          type: string
-          example: "CONFLICT"
-        message:
-          type: string
-          example: "Transición inválida: estado actual no permite la operación"
-
-    ValidationErrorResponse:
-      type: object
-      properties:
-        errors:
-          type: array
-          items:
-            $ref: '#/components/schemas/FieldError'
-      required: [errors]
-
-    FieldError:
-      type: object
-      required: [field, message]
-      properties:
-        field:
-          type: string
-          example: "descripcion"
-        message:
-          type: string
-          example: "No puede estar vacía"
-
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+      enum:
+        - PRESENCIAL
+        - CORREO
+        - SAC
+        - CSU
+        - TELEFONICO
