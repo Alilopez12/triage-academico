@@ -11,7 +11,7 @@ paths:
 
   /solicitudes:
     post:
-      summary: Crear una nueva solicitud
+      summary: Registrar una nueva solicitud
       operationId: crearSolicitud
       requestBody:
         required: true
@@ -21,17 +21,32 @@ paths:
               $ref: '#/components/schemas/SolicitudCreate'
       responses:
         '201':
-          description: Solicitud creada
+          description: Solicitud creada correctamente
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Solicitud'
-        '400':
-          description: Datos inválidos
 
     get:
-      summary: Listar solicitudes
+      summary: Listar solicitudes con filtros
       operationId: listarSolicitudes
+      parameters:
+        - name: estado
+          in: query
+          schema:
+            $ref: '#/components/schemas/EstadoSolicitud'
+        - name: tipoSolicitud
+          in: query
+          schema:
+            $ref: '#/components/schemas/TipoSolicitud'
+        - name: prioridad
+          in: query
+          schema:
+            $ref: '#/components/schemas/Prioridad'
+        - name: responsableId
+          in: query
+          schema:
+            type: integer
       responses:
         '200':
           description: Lista de solicitudes
@@ -44,7 +59,7 @@ paths:
 
   /solicitudes/{id}:
     get:
-      summary: Obtener una solicitud por id
+      summary: Obtener detalle de una solicitud
       operationId: obtenerSolicitud
       parameters:
         - name: id
@@ -75,12 +90,48 @@ paths:
       responses:
         '200':
           description: Solicitud clasificada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Solicitud'
         '409':
-          description: Transición de estado no permitida
+          description: Transición inválida
+
+  /solicitudes/{id}/priorizar:
+    patch:
+      summary: Asignar prioridad a una solicitud
+      operationId: priorizarSolicitud
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PriorizarSolicitud'
+      responses:
+        '200':
+          description: Prioridad asignada
+
+  /solicitudes/{id}/asignar:
+    patch:
+      summary: Asignar responsable a una solicitud
+      operationId: asignarResponsable
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AsignarResponsable'
+      responses:
+        '200':
+          description: Responsable asignado
 
   /solicitudes/{id}/iniciar-atencion:
     patch:
@@ -95,12 +146,6 @@ paths:
       responses:
         '200':
           description: Atención iniciada
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Solicitud'
-        '409':
-          description: Transición de estado no permitida
 
   /solicitudes/{id}/marcar-atendida:
     patch:
@@ -115,17 +160,31 @@ paths:
       responses:
         '200':
           description: Solicitud atendida
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Solicitud'
-        '409':
-          description: Transición de estado no permitida
 
   /solicitudes/{id}/cerrar:
     patch:
-      summary: Cambiar estado de ATENDIDA a CERRADA
+      summary: Cerrar solicitud
       operationId: cerrarSolicitud
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CierreSolicitud'
+      responses:
+        '200':
+          description: Solicitud cerrada
+
+  /solicitudes/{id}/historial:
+    get:
+      summary: Consultar historial de la solicitud
+      operationId: obtenerHistorial
       parameters:
         - name: id
           in: path
@@ -134,16 +193,20 @@ paths:
             type: integer
       responses:
         '200':
-          description: Solicitud cerrada
+          description: Historial de acciones
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Solicitud'
-        '409':
-          description: Transición de estado no permitida
-
+                type: array
+                items:
+                  $ref: '#/components/schemas/HistorialItem'
 
 components:
+
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
 
   schemas:
 
@@ -154,35 +217,90 @@ components:
           type: integer
         descripcion:
           type: string
-        estado:
-          $ref: '#/components/schemas/EstadoSolicitud'
         tipoSolicitud:
           $ref: '#/components/schemas/TipoSolicitud'
-        prioridad:
-          $ref: '#/components/schemas/Prioridad'
         canalOrigen:
           $ref: '#/components/schemas/CanalOrigen'
-      required:
-        - id
-        - descripcion
-        - estado
+        fechaRegistro:
+          type: string
+          format: date-time
+        identificacionSolicitante:
+          type: string
+        estado:
+          $ref: '#/components/schemas/EstadoSolicitud'
+        prioridad:
+          $ref: '#/components/schemas/Prioridad'
+        responsableId:
+          type: integer
+        historial:
+          type: array
+          items:
+          $ref: '#/components/schemas/HistorialItem'
 
     SolicitudCreate:
       type: object
       properties:
-        descripcion:
-          type: string
         tipoSolicitud:
           $ref: '#/components/schemas/TipoSolicitud'
+        descripcion:
+          type: string
         canalOrigen:
           $ref: '#/components/schemas/CanalOrigen'
+        identificacionSolicitante:
+          type: string
       required:
+        - tipoSolicitud
         - descripcion
         - canalOrigen
+        - identificacionSolicitante
+
+    PriorizarSolicitud:
+      type: object
+      properties:
+        prioridad:
+          $ref: '#/components/schemas/Prioridad'
+        impactoAcademico:
+          $ref: '#/components/schemas/ImpactoAcademico'
+        fechaLimite:
+          type: string
+          format: date
+        justificacion:
+          type: string
+      required:
+        - prioridad
+        - justificacion
+
+    AsignarResponsable:
+      type: object
+      properties:
+        responsableId:
+          type: integer
+      required:
+        - responsableId
+
+    CierreSolicitud:
+      type: object
+      properties:
+        observacionCierre:
+          type: string
+      required:
+        - observacionCierre
+
+    HistorialItem:
+      type: object
+      properties:
+        fechaHora:
+          type: string
+          format: date-time
+        accion:
+          type: string
+        usuarioResponsableId:
+          type: integer
+        observacion:
+          type: string
 
     EstadoSolicitud:
       type: string
-      description: Estados del ciclo de vida de una solicitud
       enum:
         - REGISTRADA
         - CLASIFICADA
@@ -193,11 +311,11 @@ components:
     TipoSolicitud:
       type: string
       enum:
-        - REGISTRO_ASIGNATURA
+        - REGISTRO_ASIGNATURAS
         - HOMOLOGACION
-        - CANCELACION
-        - CUPOS
-        - CONSULTA
+        - CANCELACION_ASIGNATURAS
+        - SOLICITUD_CUPOS
+        - CONSULTA_ACADEMICA
 
     Prioridad:
       type: string
@@ -205,10 +323,18 @@ components:
         - BAJA
         - MEDIA
         - ALTA
+        - CRITICA
+
+    ImpactoAcademico:
+      type: string
+      enum:
+        - BAJO
+        - MEDIO
+        - ALTO
 
     CanalOrigen:
       type: string
-      enum:
+      enum:                 
         - PRESENCIAL
         - CORREO
         - SAC
