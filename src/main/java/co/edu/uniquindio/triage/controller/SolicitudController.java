@@ -2,11 +2,14 @@ package co.edu.uniquindio.triage.controller;
 
 import co.edu.uniquindio.triage.dto.request.AsignarPrioridadRequest;
 import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
+import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
 import co.edu.uniquindio.triage.service.impl.SolicitudService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/solicitudes")
@@ -29,5 +32,10 @@ public class SolicitudController {
             @Valid @RequestBody AsignarPrioridadRequest request) {
 
         return solicitudService.asignarPrioridad(id, request);
+    }
+
+    @GetMapping("/{id}/historial")
+    public List<HistorialSolicitudResponse> obtenerHistorial(@PathVariable Long id) {
+        return solicitudService.obtenerHistorial(id);
     }
 }

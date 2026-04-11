@@ -7,6 +7,7 @@ import co.edu.uniquindio.triage.domain.model.HistorialSolicitud;
 import co.edu.uniquindio.triage.domain.model.Solicitud;
 import co.edu.uniquindio.triage.domain.model.Usuario;
 import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
+import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
 import co.edu.uniquindio.triage.exception.RecursoNoEncontradoException;
 import co.edu.uniquindio.triage.mapper.HistorialSolicitudMapper;
@@ -18,6 +19,8 @@ import co.edu.uniquindio.triage.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import co.edu.uniquindio.triage.dto.request.AsignarPrioridadRequest;
+
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -98,16 +101,14 @@ public class SolicitudService {
         // 5. Calcular prioridad automáticamente
         solicitudDomain.calcularYAsignarPrioridad();
 
-        // 6. Convertir a entity
-        SolicitudEntity solicitudActualizada = SolicitudMapper.toEntity(solicitudDomain);
-
-        // IMPORTANTE: mantener relaciones
-        solicitudActualizada.setId(solicitudEntity.getId());
-        solicitudActualizada.setSolicitante(solicitudEntity.getSolicitante());
-        solicitudActualizada.setResponsableAsignado(solicitudEntity.getResponsableAsignado());
+        // 6. ACTUALIZAR ENTITY EXISTENTE
+        solicitudEntity.setImpactoAcademico(solicitudDomain.getImpactoAcademico());
+        solicitudEntity.setFechaLimite(solicitudDomain.getFechaLimite());
+        solicitudEntity.setPrioridad(solicitudDomain.getPrioridad());
+        solicitudEntity.setJustificacionPrioridad(solicitudDomain.getJustificacionPrioridad());
 
         // 7. Guardar cambios
-        solicitudRepository.save(solicitudActualizada);
+        solicitudRepository.save(solicitudEntity);
 
         // 8. Crear historial
         HistorialSolicitud historialDomain = HistorialSolicitud.crear(
@@ -118,7 +119,7 @@ public class SolicitudService {
         );
 
         HistorialSolicitudEntity historialEntity = HistorialSolicitudMapper.toEntity(historialDomain);
-        historialEntity.setSolicitud(solicitudActualizada);
+        historialEntity.setSolicitud(solicitudEntity);
         historialEntity.setUsuarioResponsable(solicitudEntity.getSolicitante());
 
         historialSolicitudRepository.save(historialEntity);
@@ -132,5 +133,29 @@ public class SolicitudService {
                 solicitudDomain,
                 SolicitudMapper.toHistorialDomainList(historialEntities)
         );
+    }
+
+    public List<HistorialSolicitudResponse> obtenerHistorial(Long solicitudId) {
+
+        if (!solicitudRepository.existsById(solicitudId)) {
+            throw new RecursoNoEncontradoException(
+                    "No existe una solicitud con id " + solicitudId
+            );
+        }
+
+        List<HistorialSolicitudEntity> historialEntities =
+                historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudId);
+
+        List<HistorialSolicitudResponse> response = new ArrayList<>();
+
+        for (HistorialSolicitudEntity entity : historialEntities) {
+            response.add(
+                    HistorialSolicitudMapper.toResponse(
+                            HistorialSolicitudMapper.toDomain(entity)
+                    )
+            );
+        }
+
+        return response;
     }
 }
