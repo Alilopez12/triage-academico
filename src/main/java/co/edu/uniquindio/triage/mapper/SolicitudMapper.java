@@ -33,6 +33,7 @@ public class SolicitudMapper {
         solicitud.setObservacionCierre(entity.getObservacionCierre());
         solicitud.setSolicitante(UsuarioMapper.toDomain(entity.getSolicitante()));
         solicitud.setResponsableAsignado(UsuarioMapper.toDomain(entity.getResponsableAsignado()));
+        solicitud.setFechaLimite(entity.getFechaLimite());
 
         return solicitud;
     }
@@ -55,6 +56,7 @@ public class SolicitudMapper {
         entity.setObservacionCierre(domain.getObservacionCierre());
         entity.setSolicitante(UsuarioMapper.toEntity(domain.getSolicitante()));
         entity.setResponsableAsignado(UsuarioMapper.toEntity(domain.getResponsableAsignado()));
+        entity.setFechaLimite(domain.getFechaLimite());
 
         return entity;
     }
@@ -75,6 +77,7 @@ public class SolicitudMapper {
         response.setEstado(domain.getEstado());
         response.setImpactoAcademico(domain.getImpactoAcademico());
         response.setObservacionCierre(domain.getObservacionCierre());
+        response.setFechaLimite(domain.getFechaLimite());
 
         if (domain.getSolicitante() != null) {
             response.setSolicitanteId(domain.getSolicitante().getId());

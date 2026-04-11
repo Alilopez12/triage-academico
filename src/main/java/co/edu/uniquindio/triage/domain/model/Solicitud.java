@@ -8,6 +8,7 @@ import co.edu.uniquindio.triage.domain.enums.TipoSolicitud;
 import co.edu.uniquindio.triage.exception.ReglaNegocioException;
 import co.edu.uniquindio.triage.exception.TransicionInvalidaException;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public class Solicitud {
@@ -21,6 +22,7 @@ public class Solicitud {
     private String justificacionPrioridad;
     private EstadoSolicitud estado;
     private ImpactoAcademico impactoAcademico;
+    private LocalDate fechaLimite;
     private Usuario solicitante;
     private Usuario responsableAsignado;
     private String observacionCierre;
@@ -37,6 +39,7 @@ public class Solicitud {
                      String justificacionPrioridad,
                      EstadoSolicitud estado,
                      ImpactoAcademico impactoAcademico,
+                     LocalDate fechaLimite,
                      Usuario solicitante,
                      Usuario responsableAsignado,
                      String observacionCierre) {
@@ -49,6 +52,7 @@ public class Solicitud {
         this.justificacionPrioridad = justificacionPrioridad;
         this.estado = estado;
         this.impactoAcademico = impactoAcademico;
+        this.fechaLimite = fechaLimite;
         this.solicitante = solicitante;
         this.responsableAsignado = responsableAsignado;
         this.observacionCierre = observacionCierre;
@@ -85,10 +89,35 @@ public class Solicitud {
         solicitud.setPrioridad(null);
         solicitud.setJustificacionPrioridad(null);
         solicitud.setImpactoAcademico(null);
+        solicitud.setFechaLimite(null);
         solicitud.setResponsableAsignado(null);
         solicitud.setObservacionCierre(null);
 
         return solicitud;
+    }
+
+    public void asignarImpactoAcademico(ImpactoAcademico impactoAcademico) {
+        if (this.estado == EstadoSolicitud.CERRADA) {
+            throw new ReglaNegocioException("No se puede modificar una solicitud cerrada.");
+        }
+
+        if (impactoAcademico == null) {
+            throw new ReglaNegocioException("El impacto académico es obligatorio.");
+        }
+
+        this.impactoAcademico = impactoAcademico;
+    }
+
+    public void asignarFechaLimite(LocalDate fechaLimite) {
+        if (this.estado == EstadoSolicitud.CERRADA) {
+            throw new ReglaNegocioException("No se puede modificar una solicitud cerrada.");
+        }
+
+        if (fechaLimite == null) {
+            throw new ReglaNegocioException("La fecha límite es obligatoria.");
+        }
+
+        this.fechaLimite = fechaLimite;
     }
 
     public void asignarPrioridad(Prioridad prioridad, String justificacion) {
@@ -180,6 +209,37 @@ public class Solicitud {
         return this.estado == EstadoSolicitud.CERRADA;
     }
 
+    public Prioridad calcularPrioridad() {
+
+        if (impactoAcademico == null || fechaLimite == null) {
+            throw new ReglaNegocioException("No se puede calcular la prioridad sin impacto académico y fecha límite.");
+        }
+
+        long diasRestantes = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), fechaLimite);
+
+        if (impactoAcademico == ImpactoAcademico.ALTO && diasRestantes <= 3) {
+            return Prioridad.CRITICA;
+        }
+
+        if (impactoAcademico == ImpactoAcademico.ALTO) {
+            return Prioridad.ALTA;
+        }
+
+        if (impactoAcademico == ImpactoAcademico.MEDIO) {
+            return Prioridad.MEDIA;
+        }
+
+        return Prioridad.BAJA;
+    }
+
+    public void calcularYAsignarPrioridad() {
+
+        Prioridad prioridadCalculada = calcularPrioridad();
+
+        this.prioridad = prioridadCalculada;
+        this.justificacionPrioridad = "Prioridad calculada automáticamente según impacto académico y fecha límite.";
+    }
+
     public Long getId() {
         return id;
     }
@@ -214,6 +274,10 @@ public class Solicitud {
 
     public ImpactoAcademico getImpactoAcademico() {
         return impactoAcademico;
+    }
+
+    public LocalDate getFechaLimite() {
+        return fechaLimite;
     }
 
     public Usuario getSolicitante() {
@@ -262,6 +326,10 @@ public class Solicitud {
 
     public void setImpactoAcademico(ImpactoAcademico impactoAcademico) {
         this.impactoAcademico = impactoAcademico;
+    }
+
+    public void setFechaLimite(LocalDate fechaLimite) {
+        this.fechaLimite = fechaLimite;
     }
 
     public void setSolicitante(Usuario solicitante) {

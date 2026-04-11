@@ -7,6 +7,7 @@ import co.edu.uniquindio.triage.domain.enums.Prioridad;
 import co.edu.uniquindio.triage.domain.enums.TipoSolicitud;
 import jakarta.persistence.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -14,6 +15,9 @@ import java.util.List;
 @Entity
 @Table(name = "solicitudes")
 public class SolicitudEntity {
+
+    @Column
+    private LocalDate fechaLimite;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -76,7 +80,8 @@ public class SolicitudEntity {
                            ImpactoAcademico impactoAcademico,
                            String observacionCierre,
                            UsuarioEntity solicitante,
-                           UsuarioEntity responsableAsignado) {
+                           UsuarioEntity responsableAsignado,
+                           LocalDate fechaLimite) {
         this.id = id;
         this.tipo = tipo;
         this.descripcion = descripcion;
@@ -89,6 +94,7 @@ public class SolicitudEntity {
         this.observacionCierre = observacionCierre;
         this.solicitante = solicitante;
         this.responsableAsignado = responsableAsignado;
+        this.fechaLimite = fechaLimite;
     }
 
     public void agregarHistorial(HistorialSolicitudEntity historialItem) {
@@ -149,6 +155,10 @@ public class SolicitudEntity {
         return responsableAsignado;
     }
 
+    public LocalDate getFechaLimite() {
+        return fechaLimite;
+    }
+
     public List<HistorialSolicitudEntity> getHistorial() {
         return historial;
     }
@@ -199,6 +209,10 @@ public class SolicitudEntity {
 
     public void setResponsableAsignado(UsuarioEntity responsableAsignado) {
         this.responsableAsignado = responsableAsignado;
+    }
+
+    public void setFechaLimite(LocalDate fechaLimite) {
+        this.fechaLimite = fechaLimite;
     }
 
     public void setHistorial(List<HistorialSolicitudEntity> historial) {

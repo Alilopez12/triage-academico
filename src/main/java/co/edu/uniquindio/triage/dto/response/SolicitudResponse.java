@@ -6,6 +6,7 @@ import co.edu.uniquindio.triage.domain.enums.ImpactoAcademico;
 import co.edu.uniquindio.triage.domain.enums.Prioridad;
 import co.edu.uniquindio.triage.domain.enums.TipoSolicitud;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -26,6 +27,7 @@ public class SolicitudResponse {
     private String nombreResponsableAsignado;
     private String observacionCierre;
     private List<HistorialSolicitudResponse> historial;
+    private LocalDate fechaLimite;
 
     public SolicitudResponse() {
     }
@@ -44,6 +46,7 @@ public class SolicitudResponse {
                              Long responsableAsignadoId,
                              String nombreResponsableAsignado,
                              String observacionCierre,
+                             LocalDate fechaLimite,
                              List<HistorialSolicitudResponse> historial) {
         this.id = id;
         this.tipo = tipo;
@@ -60,6 +63,7 @@ public class SolicitudResponse {
         this.nombreResponsableAsignado = nombreResponsableAsignado;
         this.observacionCierre = observacionCierre;
         this.historial = historial;
+        this.fechaLimite = fechaLimite;
     }
 
     public Long getId() {
@@ -120,6 +124,13 @@ public class SolicitudResponse {
 
     public List<HistorialSolicitudResponse> getHistorial() {
         return historial;
+    }
+    public LocalDate getFechaLimite() {
+        return fechaLimite;
+    }
+
+    public void setFechaLimite(LocalDate fechaLimite) {
+        this.fechaLimite = fechaLimite;
     }
 
     public void setId(Long id) {
