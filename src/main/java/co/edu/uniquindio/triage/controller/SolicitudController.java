@@ -1,6 +1,8 @@
 package co.edu.uniquindio.triage.controller;
 
 import co.edu.uniquindio.triage.dto.request.AsignarPrioridadRequest;
+import co.edu.uniquindio.triage.dto.request.CambiarEstadoRequest;
+import co.edu.uniquindio.triage.dto.request.CerrarSolicitudRequest;
 import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
@@ -37,5 +39,21 @@ public class SolicitudController {
     @GetMapping("/{id}/historial")
     public List<HistorialSolicitudResponse> obtenerHistorial(@PathVariable Long id) {
         return solicitudService.obtenerHistorial(id);
+    }
+
+    @PutMapping("/{id}/estado")
+    public SolicitudResponse cambiarEstado(
+            @PathVariable Long id,
+            @Valid @RequestBody CambiarEstadoRequest request) {
+
+        return solicitudService.cambiarEstado(id, request);
+    }
+
+    @PutMapping("/{id}/cerrar")
+    public SolicitudResponse cerrarSolicitud(
+            @PathVariable Long id,
+            @Valid @RequestBody CerrarSolicitudRequest request) {
+
+        return solicitudService.cerrarSolicitud(id, request);
     }
 }

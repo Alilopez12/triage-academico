@@ -6,6 +6,8 @@ import co.edu.uniquindio.triage.domain.entity.UsuarioEntity;
 import co.edu.uniquindio.triage.domain.model.HistorialSolicitud;
 import co.edu.uniquindio.triage.domain.model.Solicitud;
 import co.edu.uniquindio.triage.domain.model.Usuario;
+import co.edu.uniquindio.triage.dto.request.CambiarEstadoRequest;
+import co.edu.uniquindio.triage.dto.request.CerrarSolicitudRequest;
 import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
@@ -158,4 +160,86 @@ public class SolicitudService {
 
         return response;
     }
+
+    public SolicitudResponse cambiarEstado(Long solicitudId, CambiarEstadoRequest request) {
+
+        SolicitudEntity solicitudEntity = solicitudRepository.findById(solicitudId)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No existe una solicitud con id " + solicitudId
+                ));
+
+        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
+
+        solicitudDomain.cambiarEstado(request.getNuevoEstado());
+
+        solicitudEntity.setEstado(solicitudDomain.getEstado());
+
+        solicitudRepository.save(solicitudEntity);
+
+        String observacionHistorial = request.getObservacion();
+        if (observacionHistorial == null || observacionHistorial.isBlank()) {
+            observacionHistorial = "Cambio de estado a " + solicitudDomain.getEstado();
+        }
+
+        HistorialSolicitud historialDomain = HistorialSolicitud.crear(
+                "CAMBIO_ESTADO",
+                observacionHistorial,
+                UsuarioMapper.toDomain(solicitudEntity.getSolicitante()),
+                solicitudDomain
+        );
+
+        HistorialSolicitudEntity historialEntity = HistorialSolicitudMapper.toEntity(historialDomain);
+        historialEntity.setSolicitud(solicitudEntity);
+        historialEntity.setUsuarioResponsable(solicitudEntity.getSolicitante());
+
+        historialSolicitudRepository.save(historialEntity);
+
+        List<HistorialSolicitudEntity> historialEntities =
+                historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudId);
+
+        return SolicitudMapper.toResponse(
+                solicitudDomain,
+                SolicitudMapper.toHistorialDomainList(historialEntities)
+        );
+    }
+
+    public SolicitudResponse cerrarSolicitud(Long solicitudId, CerrarSolicitudRequest request) {
+
+        SolicitudEntity solicitudEntity = solicitudRepository.findById(solicitudId)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No existe una solicitud con id " + solicitudId
+                ));
+
+        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
+
+        solicitudDomain.cerrar(request.getObservacionCierre());
+
+        solicitudEntity.setEstado(solicitudDomain.getEstado());
+        solicitudEntity.setObservacionCierre(solicitudDomain.getObservacionCierre());
+
+        solicitudRepository.save(solicitudEntity);
+
+        HistorialSolicitud historialDomain = HistorialSolicitud.crear(
+                "CIERRE_SOLICITUD",
+                request.getObservacionCierre(),
+                UsuarioMapper.toDomain(solicitudEntity.getSolicitante()),
+                solicitudDomain
+        );
+
+        HistorialSolicitudEntity historialEntity = HistorialSolicitudMapper.toEntity(historialDomain);
+        historialEntity.setSolicitud(solicitudEntity);
+        historialEntity.setUsuarioResponsable(solicitudEntity.getSolicitante());
+
+        historialSolicitudRepository.save(historialEntity);
+
+        List<HistorialSolicitudEntity> historialEntities =
+                historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudId);
+
+        return SolicitudMapper.toResponse(
+                solicitudDomain,
+                SolicitudMapper.toHistorialDomainList(historialEntities)
+        );
+    }
+
+
 }
