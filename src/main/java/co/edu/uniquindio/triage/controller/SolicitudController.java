@@ -10,6 +10,10 @@ import co.edu.uniquindio.triage.service.impl.SolicitudService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import co.edu.uniquindio.triage.domain.enums.EstadoSolicitud;
+import co.edu.uniquindio.triage.domain.enums.Prioridad;
+import co.edu.uniquindio.triage.domain.enums.TipoSolicitud;
+import co.edu.uniquindio.triage.dto.request.AsignarResponsableRequest;
 
 import java.util.List;
 
@@ -35,6 +39,13 @@ public class SolicitudController {
 
         return solicitudService.asignarPrioridad(id, request);
     }
+    @PutMapping("/{id}/responsable")
+    public SolicitudResponse asignarResponsable(
+            @PathVariable Long id,
+            @Valid @RequestBody AsignarResponsableRequest request) {
+
+        return solicitudService.asignarResponsable(id, request);
+    }
 
     @GetMapping("/{id}/historial")
     public List<HistorialSolicitudResponse> obtenerHistorial(@PathVariable Long id) {
@@ -55,5 +66,19 @@ public class SolicitudController {
             @Valid @RequestBody CerrarSolicitudRequest request) {
 
         return solicitudService.cerrarSolicitud(id, request);
+    }
+    @GetMapping
+    public List<SolicitudResponse> listarSolicitudes(
+            @RequestParam(required = false) EstadoSolicitud estado,
+            @RequestParam(required = false) TipoSolicitud tipo,
+            @RequestParam(required = false) Prioridad prioridad,
+            @RequestParam(required = false) Long responsableId) {
+
+        return solicitudService.listarSolicitudes(estado, tipo, prioridad, responsableId);
+    }
+
+    @GetMapping("/{id}")
+    public SolicitudResponse obtenerSolicitudPorId(@PathVariable Long id) {
+        return solicitudService.obtenerSolicitudPorId(id);
     }
 }
