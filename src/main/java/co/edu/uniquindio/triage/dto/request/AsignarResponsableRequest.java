@@ -10,6 +10,10 @@ public class AsignarResponsableRequest {
     public AsignarResponsableRequest() {
     }
 
+    public AsignarResponsableRequest(Long responsableId) {
+        this.responsableId = responsableId;
+    }
+
     public Long getResponsableId() {
         return responsableId;
     }

@@ -343,4 +343,19 @@ public class Solicitud {
     public void setObservacionCierre(String observacionCierre) {
         this.observacionCierre = observacionCierre;
     }
+
+    public void clasificar() {
+
+        if (this.estado != EstadoSolicitud.REGISTRADA) {
+            throw new TransicionInvalidaException(
+                    "Solo se puede clasificar una solicitud en estado REGISTRADA."
+            );
+        }
+
+        if (this.tipo == null) {
+            throw new ReglaNegocioException("El tipo de solicitud es obligatorio.");
+        }
+
+        this.estado = EstadoSolicitud.CLASIFICADA;
+    }
 }
