@@ -32,8 +32,15 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
     testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-}
 
-tasks.named('test') {
-    useJUnitPlatform()
+    // JPA
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+// MariaDB
+    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
+
+
+    tasks.named('test') {
+        useJUnitPlatform()
+    }
 }
