@@ -6,6 +6,8 @@ import co.edu.uniquindio.triage.domain.entity.UsuarioEntity;
 import co.edu.uniquindio.triage.domain.model.HistorialSolicitud;
 import co.edu.uniquindio.triage.domain.model.Solicitud;
 import co.edu.uniquindio.triage.domain.model.Usuario;
+import co.edu.uniquindio.triage.dto.request.CambiarEstadoRequest;
+import co.edu.uniquindio.triage.dto.request.CerrarSolicitudRequest;
 import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
@@ -22,6 +24,9 @@ import co.edu.uniquindio.triage.dto.request.AsignarPrioridadRequest;
 import co.edu.uniquindio.triage.domain.enums.EstadoSolicitud;
 import co.edu.uniquindio.triage.domain.enums.RolUsuario;
 
+import co.edu.uniquindio.triage.domain.enums.Prioridad;
+import co.edu.uniquindio.triage.domain.enums.TipoSolicitud;
+import co.edu.uniquindio.triage.dto.request.AsignarResponsableRequest;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -123,6 +128,19 @@ public class SolicitudService {
         solicitudDomain.calcularYAsignarPrioridad();
 
         // 8. Actualizar entity
+        // 2. Convertir a dominio
+        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
+
+        // 3. Asignar impacto académico
+        solicitudDomain.asignarImpactoAcademico(request.getImpactoAcademico());
+
+        // 4. Asignar fecha límite
+        solicitudDomain.asignarFechaLimite(request.getFechaLimite());
+
+        // 5. Calcular prioridad automáticamente
+        solicitudDomain.calcularYAsignarPrioridad();
+
+        // 6. ACTUALIZAR ENTITY EXISTENTE
         solicitudEntity.setImpactoAcademico(solicitudDomain.getImpactoAcademico());
         solicitudEntity.setFechaLimite(solicitudDomain.getFechaLimite());
         solicitudEntity.setPrioridad(solicitudDomain.getPrioridad());
@@ -135,6 +153,58 @@ public class SolicitudService {
                 "ASIGNACION_PRIORIDAD",
                 "Se asignó prioridad automáticamente: " + solicitudDomain.getPrioridad(),
                 UsuarioMapper.toDomain(usuario),
+        // 7. Guardar cambios
+        solicitudRepository.save(solicitudEntity);
+
+        // 8. Crear historial
+        HistorialSolicitud historialDomain = HistorialSolicitud.crear(
+                "ASIGNACION_PRIORIDAD",
+                "Se asignó prioridad automáticamente: " + solicitudDomain.getPrioridad(),
+                UsuarioMapper.toDomain(solicitudEntity.getSolicitante()),
+                solicitudDomain
+        );
+
+        HistorialSolicitudEntity historialEntity = HistorialSolicitudMapper.toEntity(historialDomain);
+        historialEntity.setSolicitud(solicitudEntity);
+        historialEntity.setUsuarioResponsable(solicitudEntity.getSolicitante());
+
+        historialSolicitudRepository.save(historialEntity);
+
+        // 9. Obtener historial actualizado
+        List<HistorialSolicitudEntity> historialEntities =
+                historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudId);
+
+        // 10. Retornar response
+        return SolicitudMapper.toResponse(
+                solicitudDomain,
+                SolicitudMapper.toHistorialDomainList(historialEntities)
+        );
+    }
+    public SolicitudResponse asignarResponsable(Long solicitudId, AsignarResponsableRequest request) {
+
+        SolicitudEntity solicitudEntity = solicitudRepository.findById(solicitudId)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No existe una solicitud con id " + solicitudId
+                ));
+
+        UsuarioEntity responsableEntity = usuarioRepository.findById(request.getResponsableId())
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No existe un usuario responsable con id " + request.getResponsableId()
+                ));
+
+        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
+        Usuario responsableDomain = UsuarioMapper.toDomain(responsableEntity);
+
+        solicitudDomain.asignarResponsable(responsableDomain);
+
+        solicitudEntity.setResponsableAsignado(responsableEntity);
+
+        solicitudRepository.save(solicitudEntity);
+
+        HistorialSolicitud historialDomain = HistorialSolicitud.crear(
+                "ASIGNACION_RESPONSABLE",
+                "Se asignó el responsable: " + responsableDomain.getNombre(),
+                responsableDomain,
                 solicitudDomain
         );
 
@@ -149,6 +219,13 @@ public class SolicitudService {
                 historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudId);
 
         // 11. Retornar response
+        historialEntity.setUsuarioResponsable(responsableEntity);
+
+        historialSolicitudRepository.save(historialEntity);
+
+        List<HistorialSolicitudEntity> historialEntities =
+                historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudId);
+
         return SolicitudMapper.toResponse(
                 solicitudDomain,
                 SolicitudMapper.toHistorialDomainList(historialEntities)
@@ -193,6 +270,8 @@ public class SolicitudService {
         }
 
         // 2. Buscar solicitud
+    public SolicitudResponse cambiarEstado(Long solicitudId, CambiarEstadoRequest request) {
+
         SolicitudEntity solicitudEntity = solicitudRepository.findById(solicitudId)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No existe una solicitud con id " + solicitudId
@@ -222,6 +301,23 @@ public class SolicitudService {
                 "CLASIFICACION",
                 "Solicitud clasificada como " + solicitudDomain.getTipo(),
                 UsuarioMapper.toDomain(usuario), //
+        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
+
+        solicitudDomain.cambiarEstado(request.getNuevoEstado());
+
+        solicitudEntity.setEstado(solicitudDomain.getEstado());
+
+        solicitudRepository.save(solicitudEntity);
+
+        String observacionHistorial = request.getObservacion();
+        if (observacionHistorial == null || observacionHistorial.isBlank()) {
+            observacionHistorial = "Cambio de estado a " + solicitudDomain.getEstado();
+        }
+
+        HistorialSolicitud historialDomain = HistorialSolicitud.crear(
+                "CAMBIO_ESTADO",
+                observacionHistorial,
+                UsuarioMapper.toDomain(solicitudEntity.getSolicitante()),
                 solicitudDomain
         );
 
@@ -232,6 +328,10 @@ public class SolicitudService {
         historialSolicitudRepository.save(historialEntity);
 
         // 8. Retornar
+        historialEntity.setUsuarioResponsable(solicitudEntity.getSolicitante());
+
+        historialSolicitudRepository.save(historialEntity);
+
         List<HistorialSolicitudEntity> historialEntities =
                 historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudId);
 
@@ -244,6 +344,8 @@ public class SolicitudService {
     public SolicitudResponse asignarResponsable(Long solicitudId, Long responsableId, Long usuarioId) {
 
         // 1. Buscar solicitud
+    public SolicitudResponse cerrarSolicitud(Long solicitudId, CerrarSolicitudRequest request) {
+
         SolicitudEntity solicitudEntity = solicitudRepository.findById(solicitudId)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No existe una solicitud con id " + solicitudId
@@ -292,6 +394,19 @@ public class SolicitudService {
                 "ASIGNACION_RESPONSABLE",
                 "Solicitud asignada al responsable con id: " + responsableId,
                 UsuarioMapper.toDomain(usuario),
+        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
+
+        solicitudDomain.cerrar(request.getObservacionCierre());
+
+        solicitudEntity.setEstado(solicitudDomain.getEstado());
+        solicitudEntity.setObservacionCierre(solicitudDomain.getObservacionCierre());
+
+        solicitudRepository.save(solicitudEntity);
+
+        HistorialSolicitud historialDomain = HistorialSolicitud.crear(
+                "CIERRE_SOLICITUD",
+                request.getObservacionCierre(),
+                UsuarioMapper.toDomain(solicitudEntity.getSolicitante()),
                 solicitudDomain
         );
 
@@ -306,6 +421,13 @@ public class SolicitudService {
                 historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudId);
 
         // 12. Retornar response
+        historialEntity.setUsuarioResponsable(solicitudEntity.getSolicitante());
+
+        historialSolicitudRepository.save(historialEntity);
+
+        List<HistorialSolicitudEntity> historialEntities =
+                historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudId);
+
         return SolicitudMapper.toResponse(
                 solicitudDomain,
                 SolicitudMapper.toHistorialDomainList(historialEntities)
@@ -372,5 +494,75 @@ public class SolicitudService {
 
         // Enviar a IA
         return iaService.generarResumen(contenido.toString());
+    public List<SolicitudResponse> listarSolicitudes(
+            EstadoSolicitud estado,
+            TipoSolicitud tipo,
+            Prioridad prioridad,
+            Long responsableId) {
+
+        List<SolicitudEntity> solicitudes;
+
+        // Caso 1: sin filtros
+        if (estado == null && tipo == null && prioridad == null && responsableId == null) {
+            solicitudes = solicitudRepository.findAll();
+        }
+        // Caso 2: estado y tipo
+        else if (estado != null && tipo != null) {
+            solicitudes = solicitudRepository.findByEstadoAndTipo(estado, tipo);
+        }
+        // Caso 3: solo estado
+        else if (estado != null) {
+            solicitudes = solicitudRepository.findByEstado(estado);
+        }
+        // Caso 4: solo tipo
+        else if (tipo != null) {
+            solicitudes = solicitudRepository.findByTipo(tipo);
+        }
+        // Caso 5: solo prioridad
+        else if (prioridad != null) {
+            solicitudes = solicitudRepository.findByPrioridad(prioridad);
+        }
+        // Caso 6: solo responsable
+        else if (responsableId != null) {
+            solicitudes = solicitudRepository.findByResponsableAsignadoId(responsableId);
+        }
+        else {
+            solicitudes = solicitudRepository.findAll();
+        }
+
+        List<SolicitudResponse> response = new ArrayList<>();
+
+        for (SolicitudEntity entity : solicitudes) {
+            List<HistorialSolicitudEntity> historialEntities =
+                    historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(entity.getId());
+
+            Solicitud solicitudDomain = SolicitudMapper.toDomain(entity);
+
+            response.add(
+                    SolicitudMapper.toResponse(
+                            solicitudDomain,
+                            SolicitudMapper.toHistorialDomainList(historialEntities)
+                    )
+            );
+        }
+
+        return response;
+    }
+
+    public SolicitudResponse obtenerSolicitudPorId(Long id) {
+        SolicitudEntity solicitudEntity = solicitudRepository.findById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No existe una solicitud con id " + id
+                ));
+
+        List<HistorialSolicitudEntity> historialEntities =
+                historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(id);
+
+        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
+
+        return SolicitudMapper.toResponse(
+                solicitudDomain,
+                SolicitudMapper.toHistorialDomainList(historialEntities)
+        );
     }
 }
