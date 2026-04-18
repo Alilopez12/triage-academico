@@ -10,6 +10,7 @@ import co.edu.uniquindio.triage.exception.TransicionInvalidaException;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 public class Solicitud {
 
@@ -210,34 +211,62 @@ public class Solicitud {
     }
 
     public Prioridad calcularPrioridad() {
-
-        if (impactoAcademico == null || fechaLimite == null) {
-            throw new ReglaNegocioException("No se puede calcular la prioridad sin impacto académico y fecha límite.");
+        if (tipo == null || impactoAcademico == null || fechaLimite == null) {
+            throw new ReglaNegocioException(
+                    "No se puede calcular la prioridad sin tipo, impacto académico y fecha límite."
+            );
         }
 
-        long diasRestantes = java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), fechaLimite);
+        long diasRestantes = ChronoUnit.DAYS.between(LocalDate.now(), fechaLimite);
 
-        if (impactoAcademico == ImpactoAcademico.ALTO && diasRestantes <= 3) {
+        int puntaje = 0;
+
+        // 1. Puntaje por tipo de solicitud
+        switch (tipo) {
+            case CANCELACION_ASIGNATURAS -> puntaje += 3;
+            case SOLICITUD_CUPOS -> puntaje += 3;
+            case HOMOLOGACION -> puntaje += 2;
+            case REGISTRO_ASIGNATURAS -> puntaje += 2;
+            case CONSULTA_ACADEMICA -> puntaje += 1;
+        }
+
+        // 2. Puntaje por impacto académico
+        switch (impactoAcademico) {
+            case ALTO -> puntaje += 3;
+            case MEDIO -> puntaje += 2;
+            case BAJO -> puntaje += 1;
+        }
+
+        // 3. Puntaje por cercanía de fecha límite
+        if (diasRestantes <= 1) {
+            puntaje += 4;
+        } else if (diasRestantes <= 3) {
+            puntaje += 3;
+        } else if (diasRestantes <= 7) {
+            puntaje += 2;
+        } else {
+            puntaje += 1;
+        }
+
+        // 4. Conversión del puntaje a prioridad
+        if (puntaje >= 9) {
             return Prioridad.CRITICA;
         }
-
-        if (impactoAcademico == ImpactoAcademico.ALTO) {
+        if (puntaje >= 7) {
             return Prioridad.ALTA;
         }
-
-        if (impactoAcademico == ImpactoAcademico.MEDIO) {
+        if (puntaje >= 5) {
             return Prioridad.MEDIA;
         }
-
         return Prioridad.BAJA;
     }
 
     public void calcularYAsignarPrioridad() {
-
         Prioridad prioridadCalculada = calcularPrioridad();
-
-        this.prioridad = prioridadCalculada;
-        this.justificacionPrioridad = "Prioridad calculada automáticamente según impacto académico y fecha límite.";
+        asignarPrioridad(
+                prioridadCalculada,
+                "Prioridad calculada automáticamente según tipo de solicitud, impacto académico y fecha límite."
+        );
     }
 
     public Long getId() {

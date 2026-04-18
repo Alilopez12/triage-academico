@@ -9,23 +9,23 @@ servers:
 
 paths:
 
-  /solicitudes:
+  /api/solicitudes:
     post:
       summary: Registrar una nueva solicitud
-      operationId: crearSolicitud
+      operationId: registrarSolicitud
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SolicitudCreate'
+              $ref: '#/components/schemas/SolicitudCreateRequest'
       responses:
         '201':
           description: Solicitud creada correctamente
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Solicitud'
+                $ref: '#/components/schemas/SolicitudResponse'
 
     get:
       summary: Listar solicitudes con filtros
@@ -33,20 +33,25 @@ paths:
       parameters:
         - name: estado
           in: query
+          required: false
           schema:
             $ref: '#/components/schemas/EstadoSolicitud'
-        - name: tipoSolicitud
+        - name: tipo
           in: query
+          required: false
           schema:
             $ref: '#/components/schemas/TipoSolicitud'
         - name: prioridad
           in: query
+          required: false
           schema:
             $ref: '#/components/schemas/Prioridad'
         - name: responsableId
           in: query
+          required: false
           schema:
             type: integer
+            format: int64
       responses:
         '200':
           description: Lista de solicitudes
@@ -55,31 +60,32 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Solicitud'
+                  $ref: '#/components/schemas/SolicitudResponse'
 
-  /solicitudes/{id}:
+  /api/solicitudes/{id}:
     get:
-      summary: Obtener detalle de una solicitud
-      operationId: obtenerSolicitud
+      summary: Obtener solicitud por id
+      operationId: obtenerSolicitudPorId
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '200':
           description: Solicitud encontrada
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Solicitud'
+                $ref: '#/components/schemas/SolicitudResponse'
         '404':
           description: Solicitud no encontrada
 
-  /solicitudes/{id}/clasificar:
+  /api/solicitudes/{id}/clasificar:
     patch:
-      summary: Cambiar estado de REGISTRADA a CLASIFICADA
+      summary: Clasificar una solicitud
       operationId: clasificarSolicitud
       parameters:
         - name: id
@@ -87,33 +93,65 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
+        - name: usuarioId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClasificarSolicitudRequest'
       responses:
         '200':
-          description: Solicitud clasificada
+          description: Solicitud clasificada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudResponse'
         '409':
           description: Transición inválida
+        '403':
+          description: Usuario no autorizado
 
-  /solicitudes/{id}/priorizar:
-    patch:
+  /api/solicitudes/{id}/prioridad:
+    put:
       summary: Asignar prioridad a una solicitud
-      operationId: priorizarSolicitud
+      operationId: asignarPrioridad
       parameters:
         - name: id
           in: path
           required: true
           schema:
             type: integer
+            format: int64
+        - name: usuarioId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PriorizarSolicitud'
+              $ref: '#/components/schemas/AsignarPrioridadRequest'
       responses:
         '200':
-          description: Prioridad asignada
+          description: Prioridad asignada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudResponse'
+        '403':
+          description: Usuario no autorizado
 
-  /solicitudes/{id}/asignar:
+  /api/solicitudes/{id}/asignar:
     patch:
       summary: Asignar responsable a una solicitud
       operationId: asignarResponsable
@@ -123,67 +161,32 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
+        - name: usuarioId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/AsignarResponsable'
+              $ref: '#/components/schemas/AsignarResponsableRequest'
       responses:
         '200':
-          description: Responsable asignado
+          description: Responsable asignado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudResponse'
+        '403':
+          description: Usuario no autorizado
 
-  /solicitudes/{id}/iniciar-atencion:
-    patch:
-      summary: Cambiar estado de CLASIFICADA a EN_ATENCION
-      operationId: iniciarAtencion
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Atención iniciada
-
-  /solicitudes/{id}/marcar-atendida:
-    patch:
-      summary: Cambiar estado de EN_ATENCION a ATENDIDA
-      operationId: marcarAtendida
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: Solicitud atendida
-
-  /solicitudes/{id}/cerrar:
-    patch:
-      summary: Cerrar solicitud
-      operationId: cerrarSolicitud
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: integer
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/CierreSolicitud'
-      responses:
-        '200':
-          description: Solicitud cerrada
-
-  /solicitudes/{id}/historial:
+  /api/solicitudes/{id}/historial:
     get:
-      summary: Consultar historial de la solicitud
+      summary: Obtener historial de una solicitud
       operationId: obtenerHistorial
       parameters:
         - name: id
@@ -191,102 +194,161 @@ paths:
           required: true
           schema:
             type: integer
+            format: int64
       responses:
         '200':
-          description: Historial de acciones
+          description: Historial encontrado
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/HistorialItem'
+                  $ref: '#/components/schemas/HistorialSolicitudResponse'
+
+  /api/solicitudes/{id}/estado:
+    patch:
+      summary: Cambiar el estado de una solicitud
+      operationId: cambiarEstado
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiarEstadoRequest'
+      responses:
+        '200':
+          description: Estado cambiado correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudResponse'
+        '409':
+          description: Transición inválida
+
+  /api/solicitudes/{id}/cerrar:
+    put:
+      summary: Cerrar una solicitud
+      operationId: cerrarSolicitud
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+        - name: usuarioId
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CerrarSolicitudRequest'
+      responses:
+        '200':
+          description: Solicitud cerrada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudResponse'
+        '403':
+          description: Usuario no autorizado
+
+  /api/solicitudes/{id}/resumen:
+    get:
+      summary: Generar resumen de una solicitud
+      operationId: generarResumen
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Resumen generado correctamente
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /api/solicitudes/sugerir-clasificacion:
+    post:
+      summary: Generar sugerencia automática de clasificación
+      operationId: sugerirClasificacion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SugerirClasificacionRequest'
+      responses:
+        '200':
+          description: Sugerencia generada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SugerenciaClasificacionResponse'
 
 components:
-
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-
   schemas:
 
-    Solicitud:
+    SolicitudResponse:
       type: object
       properties:
         id:
           type: integer
+          format: int64
+        tipo:
+          $ref: '#/components/schemas/TipoSolicitud'
         descripcion:
           type: string
-        tipoSolicitud:
-          $ref: '#/components/schemas/TipoSolicitud'
         canalOrigen:
           $ref: '#/components/schemas/CanalOrigen'
         fechaRegistro:
           type: string
           format: date-time
-        identificacionSolicitante:
-          type: string
+        solicitanteId:
+          type: integer
+          format: int64
+        responsableAsignadoId:
+          type: integer
+          format: int64
+          nullable: true
         estado:
           $ref: '#/components/schemas/EstadoSolicitud'
         prioridad:
           $ref: '#/components/schemas/Prioridad'
-        responsableId:
-          type: integer
-        historial:
-          type: array
-          items:
-          $ref: '#/components/schemas/HistorialItem'
-
-    SolicitudCreate:
-      type: object
-      properties:
-        tipoSolicitud:
-          $ref: '#/components/schemas/TipoSolicitud'
-        descripcion:
+        justificacionPrioridad:
           type: string
-        canalOrigen:
-          $ref: '#/components/schemas/CanalOrigen'
-        identificacionSolicitante:
-          type: string
-      required:
-        - tipoSolicitud
-        - descripcion
-        - canalOrigen
-        - identificacionSolicitante
-
-    PriorizarSolicitud:
-      type: object
-      properties:
-        prioridad:
-          $ref: '#/components/schemas/Prioridad'
+          nullable: true
         impactoAcademico:
           $ref: '#/components/schemas/ImpactoAcademico'
         fechaLimite:
           type: string
           format: date
-        justificacion:
-          type: string
-      required:
-        - prioridad
-        - justificacion
-
-    AsignarResponsable:
-      type: object
-      properties:
-        responsableId:
-          type: integer
-      required:
-        - responsableId
-
-    CierreSolicitud:
-      type: object
-      properties:
+          nullable: true
         observacionCierre:
           type: string
-      required:
-        - observacionCierre
+          nullable: true
+        historial:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistorialSolicitudResponse'
 
-    HistorialItem:
+    HistorialSolicitudResponse:
       type: object
       properties:
         fechaHora:
@@ -294,9 +356,99 @@ components:
           format: date-time
         accion:
           type: string
+        observacion:
+          type: string
         usuarioResponsableId:
           type: integer
+          format: int64
+
+    SolicitudCreateRequest:
+      type: object
+      required:
+        - tipo
+        - descripcion
+        - canalOrigen
+        - solicitanteId
+      properties:
+        tipo:
+          $ref: '#/components/schemas/TipoSolicitud'
+        descripcion:
+          type: string
+        canalOrigen:
+          $ref: '#/components/schemas/CanalOrigen'
+        solicitanteId:
+          type: integer
+          format: int64
+
+    ClasificarSolicitudRequest:
+      type: object
+      required:
+        - tipo
+      properties:
+        tipo:
+          $ref: '#/components/schemas/TipoSolicitud'
+
+    AsignarPrioridadRequest:
+      type: object
+      required:
+        - impactoAcademico
+        - fechaLimite
+      properties:
+        impactoAcademico:
+          $ref: '#/components/schemas/ImpactoAcademico'
+        fechaLimite:
+          type: string
+          format: date
+
+    AsignarResponsableRequest:
+      type: object
+      required:
+        - responsableId
+      properties:
+        responsableId:
+          type: integer
+          format: int64
+
+    CambiarEstadoRequest:
+      type: object
+      required:
+        - nuevoEstado
+        - usuarioId
+      properties:
+        nuevoEstado:
+          $ref: '#/components/schemas/EstadoSolicitud'
         observacion:
+          type: string
+        usuarioId:
+          type: integer
+          format: int64
+
+    CerrarSolicitudRequest:
+      type: object
+      required:
+        - observacionCierre
+      properties:
+        observacionCierre:
+          type: string
+
+    SugerirClasificacionRequest:
+      type: object
+      required:
+        - descripcion
+      properties:
+        descripcion:
+          type: string
+          minLength: 10
+          maxLength: 1000
+
+    SugerenciaClasificacionResponse:
+      type: object
+      properties:
+        tipoSugerido:
+          $ref: '#/components/schemas/TipoSolicitud'
+        prioridadSugerida:
+          $ref: '#/components/schemas/Prioridad'
+        justificacion:
           type: string
 
     EstadoSolicitud:
@@ -334,7 +486,7 @@ components:
 
     CanalOrigen:
       type: string
-      enum:                 
+      enum:
         - PRESENCIAL
         - CORREO
         - SAC

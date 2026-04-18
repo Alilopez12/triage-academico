@@ -26,6 +26,7 @@ import co.edu.uniquindio.triage.repository.SolicitudRepository;
 import co.edu.uniquindio.triage.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import co.edu.uniquindio.triage.dto.request.ClasificarSolicitudRequest;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -119,7 +120,9 @@ public class SolicitudService {
 
 
 
-    public SolicitudResponse clasificarSolicitud(Long solicitudId, Long usuarioId) {
+    public SolicitudResponse clasificarSolicitud(Long solicitudId,
+                                                 Long usuarioId,
+                                                 ClasificarSolicitudRequest request) {
 
         validarAdmin(usuarioId, "clasificar solicitudes");
 
@@ -128,7 +131,7 @@ public class SolicitudService {
 
         Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
 
-        solicitudDomain.clasificar(solicitudDomain.getTipo());
+        solicitudDomain.clasificar(request.getTipo());
 
         solicitudEntity.setTipo(solicitudDomain.getTipo());
         solicitudEntity.setEstado(solicitudDomain.getEstado());
@@ -153,7 +156,6 @@ public class SolicitudService {
                 SolicitudMapper.toHistorialDomainList(obtenerHistorialEntities(solicitudId))
         );
     }
-
 
     public SolicitudResponse asignarPrioridad(Long solicitudId, AsignarPrioridadRequest request, Long usuarioId) {
 
@@ -272,6 +274,7 @@ public class SolicitudService {
     public SolicitudResponse cambiarEstado(Long solicitudId, CambiarEstadoRequest request) {
 
         SolicitudEntity solicitudEntity = obtenerSolicitudEntity(solicitudId);
+        UsuarioEntity usuario = obtenerUsuario(request.getUsuarioId());
 
         Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
 
@@ -289,13 +292,13 @@ public class SolicitudService {
         HistorialSolicitud historialDomain = HistorialSolicitud.crear(
                 "CAMBIO_ESTADO",
                 observacionHistorial,
-                UsuarioMapper.toDomain(solicitudEntity.getSolicitante()),
+                UsuarioMapper.toDomain(usuario),
                 solicitudDomain
         );
 
         HistorialSolicitudEntity historialEntity = HistorialSolicitudMapper.toEntity(historialDomain);
         historialEntity.setSolicitud(solicitudEntity);
-        historialEntity.setUsuarioResponsable(solicitudEntity.getSolicitante());
+        historialEntity.setUsuarioResponsable(usuario);
 
         historialSolicitudRepository.save(historialEntity);
 
@@ -349,24 +352,53 @@ public class SolicitudService {
     public String generarResumenSolicitud(Long solicitudId) {
 
         SolicitudEntity solicitud = obtenerSolicitudEntity(solicitudId);
-
         List<HistorialSolicitudEntity> historial = obtenerHistorialEntities(solicitudId);
 
         StringBuilder contenido = new StringBuilder();
-        contenido.append("Solicitud: ").append(solicitud.getDescripcion()).append("\n");
+
+        contenido.append("Tipo: ").append(solicitud.getTipo()).append("\n");
         contenido.append("Estado: ").append(solicitud.getEstado()).append("\n");
+
+        if (solicitud.getPrioridad() != null) {
+            contenido.append("Prioridad: ").append(solicitud.getPrioridad()).append("\n");
+        }
+
+        if (solicitud.getCanalOrigen() != null) {
+            contenido.append("Canal: ").append(solicitud.getCanalOrigen()).append("\n");
+        }
+
+        if (solicitud.getFechaRegistro() != null) {
+            contenido.append("Fecha de registro: ").append(solicitud.getFechaRegistro()).append("\n");
+        }
+
+        if (solicitud.getResponsableAsignado() != null) {
+            contenido.append("Responsable: ").append(solicitud.getResponsableAsignado().getNombre()).append("\n");
+        }
+
+        contenido.append("Descripción: ").append(solicitud.getDescripcion()).append("\n");
+
+        if (solicitud.getObservacionCierre() != null && !solicitud.getObservacionCierre().isBlank()) {
+            contenido.append("Observación de cierre: ").append(solicitud.getObservacionCierre()).append("\n");
+        }
+
+        contenido.append("\nHistorial:\n");
 
         for (HistorialSolicitudEntity h : historial) {
             contenido.append("- ").append(h.getAccion());
-            if (h.getObservaciones() != null) {
+
+            if (h.getObservaciones() != null && !h.getObservaciones().isBlank()) {
                 contenido.append(" - ").append(h.getObservaciones());
             }
+
+            if (h.getFechaHora() != null) {
+                contenido.append(" (").append(h.getFechaHora()).append(")");
+            }
+
             contenido.append("\n");
         }
 
         return iaService.generarResumen(contenido.toString());
     }
-
 
     public List<SolicitudResponse> listarSolicitudes(
             EstadoSolicitud estado,

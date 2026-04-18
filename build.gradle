@@ -6,17 +6,10 @@ plugins {
 
 group = 'co.edu.uniquindio'
 version = '0.0.1-SNAPSHOT'
-description = 'triage'
 
 java {
     sourceCompatibility = '21'
     targetCompatibility = '21'
-}
-
-configurations {
-    compileOnly {
-        extendsFrom annotationProcessor
-    }
 }
 
 repositories {
@@ -34,16 +27,8 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
 
-    // JPA
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-
-// MariaDB
-    runtimeOnly 'org.mariadb.jdbc:mariadb-java-client'
-
-
-    tasks.named('test') {
-        useJUnitPlatform()
-    }
+tasks.named('test') {
+    useJUnitPlatform()
 }

@@ -14,6 +14,10 @@ import co.edu.uniquindio.triage.service.impl.SolicitudService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import co.edu.uniquindio.triage.dto.request.ClasificarSolicitudRequest;
+import co.edu.uniquindio.triage.dto.request.SugerirClasificacionRequest;
+import co.edu.uniquindio.triage.dto.response.SugerenciaClasificacionResponse;
+import co.edu.uniquindio.triage.service.impl.IAService;
 
 import java.util.List;
 
@@ -22,11 +26,12 @@ import java.util.List;
 public class SolicitudController {
 
     private final SolicitudService solicitudService;
+    private final IAService iaService;
 
-    public SolicitudController(SolicitudService solicitudService) {
+    public SolicitudController(SolicitudService solicitudService, IAService iaService) {
         this.solicitudService = solicitudService;
+        this.iaService = iaService;
     }
-
     // RF-01 Registro
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
@@ -34,13 +39,13 @@ public class SolicitudController {
         return solicitudService.registrarSolicitud(request);
     }
 
-    // RF-02 Clasificación + RF-13 autorización
     @PatchMapping("/{id}/clasificar")
     public SolicitudResponse clasificarSolicitud(
             @PathVariable Long id,
-            @RequestParam Long usuarioId) {
+            @RequestParam Long usuarioId,
+            @Valid @RequestBody ClasificarSolicitudRequest request) {
 
-        return solicitudService.clasificarSolicitud(id, usuarioId);
+        return solicitudService.clasificarSolicitud(id, usuarioId, request);
     }
 
     // RF-03 Priorización + RF-13 autorización
@@ -70,11 +75,10 @@ public class SolicitudController {
     }
 
     // RF-04 Cambio de estado
-    @PutMapping("/{id}/estado")
+    @PatchMapping("/{id}/estado")
     public SolicitudResponse cambiarEstado(
             @PathVariable Long id,
             @Valid @RequestBody CambiarEstadoRequest request) {
-
         return solicitudService.cambiarEstado(id, request);
     }
 
@@ -103,6 +107,12 @@ public class SolicitudController {
             @RequestParam(required = false) Long responsableId) {
 
         return solicitudService.listarSolicitudes(estado, tipo, prioridad, responsableId);
+    }
+
+    @PostMapping("/sugerir-clasificacion")
+    public SugerenciaClasificacionResponse sugerirClasificacion(
+            @Valid @RequestBody SugerirClasificacionRequest request) {
+        return iaService.sugerirClasificacion(request.getDescripcion());
     }
 
     // Consulta por id
