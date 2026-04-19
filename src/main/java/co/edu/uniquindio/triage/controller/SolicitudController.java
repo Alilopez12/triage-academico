@@ -206,7 +206,8 @@ public class SolicitudController {
             @RequestParam(required = false) EstadoSolicitud estado,
             @RequestParam(required = false) TipoSolicitud tipo,
             @RequestParam(required = false) Prioridad prioridad,
-            @RequestParam(required = false) Long responsableId) {
+            @RequestParam(required = false) Long responsableId)
+            {
 
         return consultarSolicitudUseCase.listar(estado, tipo, prioridad, responsableId);
     }

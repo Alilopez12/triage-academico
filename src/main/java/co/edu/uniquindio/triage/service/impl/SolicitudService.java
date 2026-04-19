@@ -10,7 +10,12 @@ import co.edu.uniquindio.triage.domain.enums.TipoSolicitud;
 import co.edu.uniquindio.triage.domain.model.HistorialSolicitud;
 import co.edu.uniquindio.triage.domain.model.Solicitud;
 import co.edu.uniquindio.triage.domain.model.Usuario;
-import co.edu.uniquindio.triage.dto.request.*;
+import co.edu.uniquindio.triage.dto.request.AsignarPrioridadRequest;
+import co.edu.uniquindio.triage.dto.request.AsignarResponsableRequest;
+import co.edu.uniquindio.triage.dto.request.CambiarEstadoRequest;
+import co.edu.uniquindio.triage.dto.request.CerrarSolicitudRequest;
+import co.edu.uniquindio.triage.dto.request.ClasificarSolicitudRequest;
+import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
 import co.edu.uniquindio.triage.exception.RecursoNoEncontradoException;
@@ -20,7 +25,13 @@ import co.edu.uniquindio.triage.mapper.UsuarioMapper;
 import co.edu.uniquindio.triage.repository.HistorialSolicitudRepository;
 import co.edu.uniquindio.triage.repository.SolicitudRepository;
 import co.edu.uniquindio.triage.repository.UsuarioRepository;
-import co.edu.uniquindio.triage.service.*;
+import co.edu.uniquindio.triage.service.AsignarPrioridadUseCase;
+import co.edu.uniquindio.triage.service.AsignarResponsableUseCase;
+import co.edu.uniquindio.triage.service.CambiarEstadoSolicitudUseCase;
+import co.edu.uniquindio.triage.service.CerrarSolicitudUseCase;
+import co.edu.uniquindio.triage.service.ClasificarSolicitudUseCase;
+import co.edu.uniquindio.triage.service.ConsultarSolicitudUseCase;
+import co.edu.uniquindio.triage.service.RegistrarSolicitudUseCase;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,6 +64,7 @@ public class SolicitudService implements
         this.iaService = iaService;
     }
 
+    // ===================== IMPLEMENTACIÓN DE INTERFACES =====================
 
     @Override
     public SolicitudResponse ejecutar(SolicitudCreateRequest request) {
@@ -90,7 +102,6 @@ public class SolicitudService implements
             TipoSolicitud tipo,
             Prioridad prioridad,
             Long responsableId) {
-
         return listarSolicitudes(estado, tipo, prioridad, responsableId);
     }
 
@@ -104,6 +115,7 @@ public class SolicitudService implements
         return obtenerHistorialInterno(id);
     }
 
+    // ===================== MÉTODOS INTERNOS AUXILIARES =====================
 
     private UsuarioEntity obtenerUsuario(Long usuarioId) {
         return usuarioRepository.findById(usuarioId)
@@ -130,6 +142,7 @@ public class SolicitudService implements
         return historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudId);
     }
 
+    // ===================== LÓGICA DE NEGOCIO =====================
 
     public SolicitudResponse registrarSolicitud(SolicitudCreateRequest request) {
 

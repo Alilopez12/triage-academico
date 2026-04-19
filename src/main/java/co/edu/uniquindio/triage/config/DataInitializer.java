@@ -18,16 +18,19 @@ public class DataInitializer {
 
                 UsuarioEntity estudiante = new UsuarioEntity();
                 estudiante.setNombre("Juan Estudiante");
+                estudiante.setEmail("juan.estudiante@uqvirtual.edu.co");
                 estudiante.setRol(RolUsuario.ESTUDIANTE);
                 estudiante.setActivo(true);
 
                 UsuarioEntity admin = new UsuarioEntity();
                 admin.setNombre("Admin Sistema");
+                admin.setEmail("admin.sistema@uqvirtual.edu.co");
                 admin.setRol(RolUsuario.ADMIN);
                 admin.setActivo(true);
 
                 UsuarioEntity responsable = new UsuarioEntity();
                 responsable.setNombre("Responsable Academico");
+                responsable.setEmail("responsable.academico@uqvirtual.edu.co");
                 responsable.setRol(RolUsuario.RESPONSABLE);
                 responsable.setActivo(true);
 
