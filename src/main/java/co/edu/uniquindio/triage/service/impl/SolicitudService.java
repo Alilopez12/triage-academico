@@ -10,11 +10,7 @@ import co.edu.uniquindio.triage.domain.enums.TipoSolicitud;
 import co.edu.uniquindio.triage.domain.model.HistorialSolicitud;
 import co.edu.uniquindio.triage.domain.model.Solicitud;
 import co.edu.uniquindio.triage.domain.model.Usuario;
-import co.edu.uniquindio.triage.dto.request.AsignarPrioridadRequest;
-import co.edu.uniquindio.triage.dto.request.AsignarResponsableRequest;
-import co.edu.uniquindio.triage.dto.request.CambiarEstadoRequest;
-import co.edu.uniquindio.triage.dto.request.CerrarSolicitudRequest;
-import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
+import co.edu.uniquindio.triage.dto.request.*;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
 import co.edu.uniquindio.triage.exception.RecursoNoEncontradoException;
@@ -24,16 +20,23 @@ import co.edu.uniquindio.triage.mapper.UsuarioMapper;
 import co.edu.uniquindio.triage.repository.HistorialSolicitudRepository;
 import co.edu.uniquindio.triage.repository.SolicitudRepository;
 import co.edu.uniquindio.triage.repository.UsuarioRepository;
+import co.edu.uniquindio.triage.service.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import co.edu.uniquindio.triage.dto.request.ClasificarSolicitudRequest;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
 @Transactional
-public class SolicitudService {
+public class SolicitudService implements
+        ConsultarSolicitudUseCase,
+        RegistrarSolicitudUseCase,
+        ClasificarSolicitudUseCase,
+        AsignarPrioridadUseCase,
+        AsignarResponsableUseCase,
+        CambiarEstadoSolicitudUseCase,
+        CerrarSolicitudUseCase {
 
     private final SolicitudRepository solicitudRepository;
     private final UsuarioRepository usuarioRepository;
@@ -48,6 +51,57 @@ public class SolicitudService {
         this.usuarioRepository = usuarioRepository;
         this.historialSolicitudRepository = historialSolicitudRepository;
         this.iaService = iaService;
+    }
+
+
+    @Override
+    public SolicitudResponse ejecutar(SolicitudCreateRequest request) {
+        return registrarSolicitud(request);
+    }
+
+    @Override
+    public SolicitudResponse ejecutar(Long solicitudId, Long usuarioId, ClasificarSolicitudRequest request) {
+        return clasificarSolicitud(solicitudId, usuarioId, request);
+    }
+
+    @Override
+    public SolicitudResponse ejecutar(Long solicitudId, AsignarPrioridadRequest request, Long usuarioId) {
+        return asignarPrioridad(solicitudId, request, usuarioId);
+    }
+
+    @Override
+    public SolicitudResponse ejecutar(Long solicitudId, AsignarResponsableRequest request, Long usuarioId) {
+        return asignarResponsable(solicitudId, request, usuarioId);
+    }
+
+    @Override
+    public SolicitudResponse ejecutar(Long solicitudId, CambiarEstadoRequest request) {
+        return cambiarEstado(solicitudId, request);
+    }
+
+    @Override
+    public SolicitudResponse ejecutar(Long solicitudId, CerrarSolicitudRequest request, Long usuarioId) {
+        return cerrarSolicitud(solicitudId, request, usuarioId);
+    }
+
+    @Override
+    public List<SolicitudResponse> listar(
+            EstadoSolicitud estado,
+            TipoSolicitud tipo,
+            Prioridad prioridad,
+            Long responsableId) {
+
+        return listarSolicitudes(estado, tipo, prioridad, responsableId);
+    }
+
+    @Override
+    public SolicitudResponse obtenerPorId(Long id) {
+        return obtenerSolicitudPorId(id);
+    }
+
+    @Override
+    public List<HistorialSolicitudResponse> obtenerHistorial(Long id) {
+        return obtenerHistorialInterno(id);
     }
 
 
@@ -75,7 +129,6 @@ public class SolicitudService {
     private List<HistorialSolicitudEntity> obtenerHistorialEntities(Long solicitudId) {
         return historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudId);
     }
-
 
 
     public SolicitudResponse registrarSolicitud(SolicitudCreateRequest request) {
@@ -117,8 +170,6 @@ public class SolicitudService {
                 SolicitudMapper.toHistorialDomainList(obtenerHistorialEntities(solicitudGuardada.getId()))
         );
     }
-
-
 
     public SolicitudResponse clasificarSolicitud(Long solicitudId,
                                                  Long usuarioId,
@@ -196,7 +247,6 @@ public class SolicitudService {
         );
     }
 
-
     public SolicitudResponse asignarResponsable(Long solicitudId,
                                                 AsignarResponsableRequest request,
                                                 Long usuarioId) {
@@ -245,9 +295,7 @@ public class SolicitudService {
         );
     }
 
-
-
-    public List<HistorialSolicitudResponse> obtenerHistorial(Long solicitudId) {
+    public List<HistorialSolicitudResponse> obtenerHistorialInterno(Long solicitudId) {
 
         if (!solicitudRepository.existsById(solicitudId)) {
             throw new RecursoNoEncontradoException(
@@ -268,8 +316,6 @@ public class SolicitudService {
 
         return response;
     }
-
-
 
     public SolicitudResponse cambiarEstado(Long solicitudId, CambiarEstadoRequest request) {
 
@@ -308,8 +354,6 @@ public class SolicitudService {
         );
     }
 
-
-
     public SolicitudResponse cerrarSolicitud(Long solicitudId,
                                              CerrarSolicitudRequest request,
                                              Long usuarioId) {
@@ -346,8 +390,6 @@ public class SolicitudService {
                 SolicitudMapper.toHistorialDomainList(obtenerHistorialEntities(solicitudId))
         );
     }
-
-
 
     public String generarResumenSolicitud(Long solicitudId) {
 
