@@ -28,7 +28,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-
+import co.edu.uniquindio.triage.dto.response.PageResponse;
 import java.util.List;
 
 @RestController
@@ -44,6 +44,7 @@ public class SolicitudController {
     private final ConsultarSolicitudUseCase consultarSolicitudUseCase;
     private final SolicitudService solicitudService;
     private final IAService iaService;
+
 
     public SolicitudController(RegistrarSolicitudUseCase registrarSolicitudUseCase,
                                ClasificarSolicitudUseCase clasificarSolicitudUseCase,
@@ -196,20 +197,32 @@ public class SolicitudController {
 
     @Operation(
             summary = "Listar solicitudes con filtros",
-            description = "Permite consultar solicitudes por estado, tipo, prioridad y responsable asignado."
+            description = "Permite consultar solicitudes por estado, tipo, prioridad y responsable asignado, con paginación y ordenamiento."
     )
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Solicitudes consultadas correctamente")
     })
     @GetMapping
-    public List<SolicitudResponse> listarSolicitudes(
+    public PageResponse<SolicitudResponse> listarSolicitudes(
             @RequestParam(required = false) EstadoSolicitud estado,
             @RequestParam(required = false) TipoSolicitud tipo,
             @RequestParam(required = false) Prioridad prioridad,
-            @RequestParam(required = false) Long responsableId)
-            {
+            @RequestParam(required = false) Long responsableId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "id") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction) {
 
-        return consultarSolicitudUseCase.listar(estado, tipo, prioridad, responsableId);
+        return consultarSolicitudUseCase.listar(
+                estado,
+                tipo,
+                prioridad,
+                responsableId,
+                page,
+                size,
+                sortBy,
+                direction
+        );
     }
 
     @Operation(
