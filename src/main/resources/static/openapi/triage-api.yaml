@@ -1,0 +1,431 @@
+openapi: 3.0.0
+info:
+  title: API Sistema de Triage Académico
+  version: 1.0.0
+  description: API para gestionar solicitudes académicas y su ciclo de vida con control de concurrencia optimista.
+
+servers:
+  - url: http://localhost:8080
+
+paths:
+
+  /api/solicitudes:
+    post:
+      summary: Registrar una nueva solicitud
+      operationId: registrarSolicitud
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SolicitudCreateRequest'
+            example:
+              tipo: CONSULTA_ACADEMICA
+              descripcion: Solicito revisión del estado de mi proceso de homologación.
+              canalOrigen: CORREO
+              solicitanteId: 1001
+      responses:
+        '201':
+          description: Solicitud creada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudResponse'
+              example:
+                id: 1
+                version: 0
+                tipo: CONSULTA_ACADEMICA
+                descripcion: Solicito revisión del estado de mi proceso de homologación.
+                canalOrigen: CORREO
+                fechaRegistro: '2026-04-19T10:15:30'
+                solicitanteId: 1001
+                responsableAsignadoId: null
+                estado: REGISTRADA
+                prioridad: null
+                justificacionPrioridad: null
+                impactoAcademico: null
+                fechaLimite: null
+                observacionCierre: null
+                historial: []
+        '400':
+          description: Datos inválidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      summary: Listar solicitudes con filtros
+      operationId: listarSolicitudes
+      parameters:
+        - name: estado
+          in: query
+          schema:
+            $ref: '#/components/schemas/EstadoSolicitud'
+        - name: tipo
+          in: query
+          schema:
+            $ref: '#/components/schemas/TipoSolicitud'
+        - name: prioridad
+          in: query
+          schema:
+            $ref: '#/components/schemas/Prioridad'
+        - name: responsableId
+          in: query
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Lista de solicitudes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SolicitudResponse'
+
+  /api/solicitudes/{id}:
+    get:
+      summary: Obtener solicitud por ID
+      operationId: obtenerSolicitud
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      responses:
+        '200':
+          description: Solicitud encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudResponse'
+        '404':
+          description: No encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/solicitudes/{id}/clasificar:
+    patch:
+      summary: Clasificar solicitud
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: usuarioId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClasificarSolicitudRequest'
+            example:
+              tipo: HOMOLOGACION
+              version: 0
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SolicitudResponse'
+        '409':
+          description: Conflicto de concurrencia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/solicitudes/{id}/prioridad:
+    put:
+      summary: Asignar prioridad
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: usuarioId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AsignarPrioridadRequest'
+            example:
+              impactoAcademico: ALTO
+              fechaLimite: '2026-04-22'
+              version: 1
+      responses:
+        '200':
+          description: OK
+        '409':
+          description: Conflicto de concurrencia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/solicitudes/{id}/asignar:
+    patch:
+      summary: Asignar responsable
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: usuarioId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AsignarResponsableRequest'
+            example:
+              responsableId: 3001
+              version: 2
+      responses:
+        '200':
+          description: OK
+        '409':
+          description: Conflicto de concurrencia
+
+  /api/solicitudes/{id}/estado:
+    patch:
+      summary: Cambiar estado
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CambiarEstadoRequest'
+            example:
+              nuevoEstado: EN_ATENCION
+              observacion: Inicio atención
+              usuarioId: 2001
+              version: 2
+      responses:
+        '200':
+          description: OK
+        '409':
+          description: Conflicto de concurrencia
+
+  /api/solicitudes/{id}/cerrar:
+    put:
+      summary: Cerrar solicitud
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: usuarioId
+          in: query
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CerrarSolicitudRequest'
+            example:
+              observacionCierre: Se resolvió correctamente
+              version: 3
+      responses:
+        '200':
+          description: OK
+        '409':
+          description: Conflicto de concurrencia
+
+components:
+
+  schemas:
+
+    SolicitudResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        version:
+          type: integer
+        tipo:
+          $ref: '#/components/schemas/TipoSolicitud'
+        descripcion:
+          type: string
+        canalOrigen:
+          $ref: '#/components/schemas/CanalOrigen'
+        fechaRegistro:
+          type: string
+          format: date-time
+        solicitanteId:
+          type: integer
+        responsableAsignadoId:
+          type: integer
+          nullable: true
+        estado:
+          $ref: '#/components/schemas/EstadoSolicitud'
+        prioridad:
+          $ref: '#/components/schemas/Prioridad'
+        justificacionPrioridad:
+          type: string
+        impactoAcademico:
+          $ref: '#/components/schemas/ImpactoAcademico'
+        fechaLimite:
+          type: string
+          format: date
+        observacionCierre:
+          type: string
+        historial:
+          type: array
+          items:
+            $ref: '#/components/schemas/HistorialSolicitudResponse'
+
+    HistorialSolicitudResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        fechaHora:
+          type: string
+          format: date-time
+        accion:
+          type: string
+        observaciones:
+          type: string
+        usuarioResponsableId:
+          type: integer
+        nombreUsuarioResponsable:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string
+        details:
+          type: object
+
+    SolicitudCreateRequest:
+      type: object
+      properties:
+        tipo:
+          $ref: '#/components/schemas/TipoSolicitud'
+        descripcion:
+          type: string
+        canalOrigen:
+          $ref: '#/components/schemas/CanalOrigen'
+        solicitanteId:
+          type: integer
+
+    ClasificarSolicitudRequest:
+      type: object
+      required: [tipo, version]
+      properties:
+        tipo:
+          $ref: '#/components/schemas/TipoSolicitud'
+        version:
+          type: integer
+
+    AsignarPrioridadRequest:
+      type: object
+      required: [impactoAcademico, fechaLimite, version]
+      properties:
+        impactoAcademico:
+          $ref: '#/components/schemas/ImpactoAcademico'
+        fechaLimite:
+          type: string
+          format: date
+        version:
+          type: integer
+
+    AsignarResponsableRequest:
+      type: object
+      required: [responsableId, version]
+      properties:
+        responsableId:
+          type: integer
+        version:
+          type: integer
+
+    CambiarEstadoRequest:
+      type: object
+      required: [nuevoEstado, usuarioId, version]
+      properties:
+        nuevoEstado:
+          $ref: '#/components/schemas/EstadoSolicitud'
+        observacion:
+          type: string
+        usuarioId:
+          type: integer
+        version:
+          type: integer
+
+    CerrarSolicitudRequest:
+      type: object
+      required: [observacionCierre, version]
+      properties:
+        observacionCierre:
+          type: string
+        version:
+          type: integer
+
+    EstadoSolicitud:
+      type: string
+      enum: [REGISTRADA, CLASIFICADA, EN_ATENCION, ATENDIDA, CERRADA]
+
+    TipoSolicitud:
+      type: string
+      enum:
+        - REGISTRO_ASIGNATURAS
+        - HOMOLOGACION
+        - CANCELACION_ASIGNATURAS
+        - SOLICITUD_CUPOS
+        - CONSULTA_ACADEMICA
+
+    Prioridad:
+      type: string
+      enum: [BAJA, MEDIA, ALTA, CRITICA]
+
+    ImpactoAcademico:
+      type: string
+      enum: [BAJO, MEDIO, ALTO]
+
+    CanalOrigen:
+      type: string
+      enum: [PRESENCIAL, CORREO, SAC, CSU, TELEFONICO]

@@ -1,0 +1,7 @@
+# Use this workspace to collaborate
+workspace:
+  id: 727a4dcd-c6e6-401a-8e67-9547ee74f0df
+
+localResources:
+  specs:
+    - ../src/main/resources/openapi/triage-api.yaml
