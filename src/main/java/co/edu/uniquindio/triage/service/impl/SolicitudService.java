@@ -20,6 +20,7 @@ import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.PageResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
 import co.edu.uniquindio.triage.exception.AutorizacionException;
+import co.edu.uniquindio.triage.exception.ConcurrenciaException;
 import co.edu.uniquindio.triage.exception.RecursoNoEncontradoException;
 import co.edu.uniquindio.triage.exception.ReglaNegocioException;
 import co.edu.uniquindio.triage.mapper.HistorialSolicitudMapper;
@@ -72,8 +73,6 @@ public class SolicitudService implements
         this.historialSolicitudRepository = historialSolicitudRepository;
         this.iaService = iaService;
     }
-
-    // ===================== IMPLEMENTACIÓN DE INTERFACES =====================
 
     @Override
     public SolicitudResponse ejecutar(SolicitudCreateRequest request) {
@@ -128,8 +127,6 @@ public class SolicitudService implements
         return obtenerHistorialInterno(id);
     }
 
-    // ===================== MÉTODOS INTERNOS AUXILIARES =====================
-
     private UsuarioEntity obtenerUsuario(Long usuarioId) {
         return usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RecursoNoEncontradoException(
@@ -142,6 +139,24 @@ public class SolicitudService implements
                 .orElseThrow(() -> new RecursoNoEncontradoException(
                         "No existe una solicitud con id " + solicitudId
                 ));
+    }
+
+    private void validarVersion(Long versionEnviada, SolicitudEntity solicitudEntity) {
+        if (versionEnviada == null) {
+            throw new ReglaNegocioException("La versión es obligatoria para modificar la solicitud.");
+        }
+
+        if (solicitudEntity.getVersion() == null) {
+            throw new ConcurrenciaException("La solicitud no tiene una versión válida de concurrencia.");
+        }
+
+        if (!solicitudEntity.getVersion().equals(versionEnviada)) {
+            throw new ConcurrenciaException(
+                    "Conflicto de concurrencia: la solicitud fue modificada por otro usuario. " +
+                            "Versión actual=" + solicitudEntity.getVersion() +
+                            ", versión enviada=" + versionEnviada
+            );
+        }
     }
 
     private void validarAdmin(Long usuarioId, String accion) {
@@ -227,10 +242,7 @@ public class SolicitudService implements
         return Sort.by(sortDirection, sortBy);
     }
 
-    // ===================== LÓGICA DE NEGOCIO =====================
-
     public SolicitudResponse registrarSolicitud(SolicitudCreateRequest request) {
-
         UsuarioEntity solicitanteEntity = obtenerUsuario(request.getSolicitanteId());
 
         if (solicitanteEntity.getRol() != RolUsuario.ESTUDIANTE) {
@@ -253,7 +265,7 @@ public class SolicitudService implements
         SolicitudEntity solicitudEntity = SolicitudMapper.toEntity(solicitudDomain);
         solicitudEntity.setSolicitante(solicitanteEntity);
 
-        SolicitudEntity solicitudGuardada = solicitudRepository.save(solicitudEntity);
+        SolicitudEntity solicitudGuardada = solicitudRepository.saveAndFlush(solicitudEntity);
         Solicitud solicitudGuardadaDomain = SolicitudMapper.toDomain(solicitudGuardada);
 
         HistorialSolicitud historialInicialDomain = HistorialSolicitud.crearRegistroInicial(
@@ -282,43 +294,45 @@ public class SolicitudService implements
         UsuarioEntity usuario = obtenerUsuario(usuarioId);
         SolicitudEntity solicitudEntity = obtenerSolicitudEntity(solicitudId);
 
-        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
+        validarVersion(request.getVersion(), solicitudEntity);
 
+        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
         solicitudDomain.clasificar(request.getTipo());
 
         solicitudEntity.setTipo(solicitudDomain.getTipo());
         solicitudEntity.setEstado(solicitudDomain.getEstado());
 
-        solicitudRepository.save(solicitudEntity);
+        SolicitudEntity solicitudActualizada = solicitudRepository.saveAndFlush(solicitudEntity);
+        Solicitud solicitudActualizadaDomain = SolicitudMapper.toDomain(solicitudActualizada);
 
         HistorialSolicitud historialDomain = HistorialSolicitud.crear(
                 "CLASIFICACION",
-                "Solicitud clasificada como " + solicitudDomain.getTipo(),
+                "Solicitud clasificada como " + solicitudActualizadaDomain.getTipo(),
                 UsuarioMapper.toDomain(usuario),
-                solicitudDomain
+                solicitudActualizadaDomain
         );
 
         HistorialSolicitudEntity historialEntity = HistorialSolicitudMapper.toEntity(historialDomain);
-        historialEntity.setSolicitud(solicitudEntity);
+        historialEntity.setSolicitud(solicitudActualizada);
         historialEntity.setUsuarioResponsable(usuario);
 
         historialSolicitudRepository.save(historialEntity);
 
         return SolicitudMapper.toResponse(
-                solicitudDomain,
+                solicitudActualizadaDomain,
                 SolicitudMapper.toHistorialDomainList(obtenerHistorialEntities(solicitudId))
         );
     }
 
     public SolicitudResponse asignarPrioridad(Long solicitudId, AsignarPrioridadRequest request, Long usuarioId) {
-
         validarAdmin(usuarioId, "asignar prioridad");
 
         UsuarioEntity usuario = obtenerUsuario(usuarioId);
         SolicitudEntity solicitudEntity = obtenerSolicitudEntity(solicitudId);
 
-        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
+        validarVersion(request.getVersion(), solicitudEntity);
 
+        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
         solicitudDomain.asignarImpactoAcademico(request.getImpactoAcademico());
         solicitudDomain.asignarFechaLimite(request.getFechaLimite());
         solicitudDomain.calcularYAsignarPrioridad();
@@ -328,23 +342,24 @@ public class SolicitudService implements
         solicitudEntity.setPrioridad(solicitudDomain.getPrioridad());
         solicitudEntity.setJustificacionPrioridad(solicitudDomain.getJustificacionPrioridad());
 
-        solicitudRepository.save(solicitudEntity);
+        SolicitudEntity solicitudActualizada = solicitudRepository.saveAndFlush(solicitudEntity);
+        Solicitud solicitudActualizadaDomain = SolicitudMapper.toDomain(solicitudActualizada);
 
         HistorialSolicitud historialDomain = HistorialSolicitud.crear(
                 "ASIGNACION_PRIORIDAD",
-                "Se asignó prioridad automáticamente: " + solicitudDomain.getPrioridad(),
+                "Se asignó prioridad automáticamente: " + solicitudActualizadaDomain.getPrioridad(),
                 UsuarioMapper.toDomain(usuario),
-                solicitudDomain
+                solicitudActualizadaDomain
         );
 
         HistorialSolicitudEntity historialEntity = HistorialSolicitudMapper.toEntity(historialDomain);
-        historialEntity.setSolicitud(solicitudEntity);
+        historialEntity.setSolicitud(solicitudActualizada);
         historialEntity.setUsuarioResponsable(usuario);
 
         historialSolicitudRepository.save(historialEntity);
 
         return SolicitudMapper.toResponse(
-                solicitudDomain,
+                solicitudActualizadaDomain,
                 SolicitudMapper.toHistorialDomainList(obtenerHistorialEntities(solicitudId))
         );
     }
@@ -357,6 +372,8 @@ public class SolicitudService implements
 
         UsuarioEntity usuario = obtenerUsuario(usuarioId);
         SolicitudEntity solicitudEntity = obtenerSolicitudEntity(solicitudId);
+
+        validarVersion(request.getVersion(), solicitudEntity);
 
         UsuarioEntity responsableEntity = obtenerUsuario(request.getResponsableId());
 
@@ -373,32 +390,31 @@ public class SolicitudService implements
         Usuario responsableDomain = UsuarioMapper.toDomain(responsableEntity);
 
         solicitudDomain.asignarResponsable(responsableDomain);
-
         solicitudEntity.setResponsableAsignado(responsableEntity);
 
-        solicitudRepository.save(solicitudEntity);
+        SolicitudEntity solicitudActualizada = solicitudRepository.saveAndFlush(solicitudEntity);
+        Solicitud solicitudActualizadaDomain = SolicitudMapper.toDomain(solicitudActualizada);
 
         HistorialSolicitud historialDomain = HistorialSolicitud.crear(
                 "ASIGNACION_RESPONSABLE",
                 "Se asignó el responsable: " + responsableDomain.getNombre(),
                 UsuarioMapper.toDomain(usuario),
-                solicitudDomain
+                solicitudActualizadaDomain
         );
 
         HistorialSolicitudEntity historialEntity = HistorialSolicitudMapper.toEntity(historialDomain);
-        historialEntity.setSolicitud(solicitudEntity);
+        historialEntity.setSolicitud(solicitudActualizada);
         historialEntity.setUsuarioResponsable(usuario);
 
         historialSolicitudRepository.save(historialEntity);
 
         return SolicitudMapper.toResponse(
-                solicitudDomain,
+                solicitudActualizadaDomain,
                 SolicitudMapper.toHistorialDomainList(obtenerHistorialEntities(solicitudId))
         );
     }
 
     public List<HistorialSolicitudResponse> obtenerHistorialInterno(Long solicitudId) {
-
         if (!solicitudRepository.existsById(solicitudId)) {
             throw new RecursoNoEncontradoException(
                     "No existe una solicitud con id " + solicitudId
@@ -420,11 +436,12 @@ public class SolicitudService implements
     }
 
     public SolicitudResponse cambiarEstado(Long solicitudId, CambiarEstadoRequest request) {
-
         validarAdminOResponsable(request.getUsuarioId(), "cambiar el estado de solicitudes");
 
         SolicitudEntity solicitudEntity = obtenerSolicitudEntity(solicitudId);
         UsuarioEntity usuario = obtenerUsuario(request.getUsuarioId());
+
+        validarVersion(request.getVersion(), solicitudEntity);
 
         if (usuario.getRol() == RolUsuario.RESPONSABLE) {
             UsuarioEntity responsableAsignado = solicitudEntity.getResponsableAsignado();
@@ -435,33 +452,33 @@ public class SolicitudService implements
         }
 
         Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
-
         solicitudDomain.cambiarEstado(request.getNuevoEstado());
 
         solicitudEntity.setEstado(solicitudDomain.getEstado());
 
-        solicitudRepository.save(solicitudEntity);
+        SolicitudEntity solicitudActualizada = solicitudRepository.saveAndFlush(solicitudEntity);
+        Solicitud solicitudActualizadaDomain = SolicitudMapper.toDomain(solicitudActualizada);
 
         String observacionHistorial = request.getObservacion();
         if (observacionHistorial == null || observacionHistorial.isBlank()) {
-            observacionHistorial = "Cambio de estado a " + solicitudDomain.getEstado();
+            observacionHistorial = "Cambio de estado a " + solicitudActualizadaDomain.getEstado();
         }
 
         HistorialSolicitud historialDomain = HistorialSolicitud.crear(
                 "CAMBIO_ESTADO",
                 observacionHistorial,
                 UsuarioMapper.toDomain(usuario),
-                solicitudDomain
+                solicitudActualizadaDomain
         );
 
         HistorialSolicitudEntity historialEntity = HistorialSolicitudMapper.toEntity(historialDomain);
-        historialEntity.setSolicitud(solicitudEntity);
+        historialEntity.setSolicitud(solicitudActualizada);
         historialEntity.setUsuarioResponsable(usuario);
 
         historialSolicitudRepository.save(historialEntity);
 
         return SolicitudMapper.toResponse(
-                solicitudDomain,
+                solicitudActualizadaDomain,
                 SolicitudMapper.toHistorialDomainList(obtenerHistorialEntities(solicitudId))
         );
     }
@@ -475,36 +492,37 @@ public class SolicitudService implements
         UsuarioEntity usuario = obtenerUsuario(usuarioId);
         SolicitudEntity solicitudEntity = obtenerSolicitudEntity(solicitudId);
 
-        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
+        validarVersion(request.getVersion(), solicitudEntity);
 
+        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
         solicitudDomain.cerrar(request.getObservacionCierre());
 
         solicitudEntity.setEstado(solicitudDomain.getEstado());
         solicitudEntity.setObservacionCierre(solicitudDomain.getObservacionCierre());
 
-        solicitudRepository.save(solicitudEntity);
+        SolicitudEntity solicitudActualizada = solicitudRepository.saveAndFlush(solicitudEntity);
+        Solicitud solicitudActualizadaDomain = SolicitudMapper.toDomain(solicitudActualizada);
 
         HistorialSolicitud historialDomain = HistorialSolicitud.crear(
                 "CIERRE_SOLICITUD",
                 request.getObservacionCierre(),
                 UsuarioMapper.toDomain(usuario),
-                solicitudDomain
+                solicitudActualizadaDomain
         );
 
         HistorialSolicitudEntity historialEntity = HistorialSolicitudMapper.toEntity(historialDomain);
-        historialEntity.setSolicitud(solicitudEntity);
+        historialEntity.setSolicitud(solicitudActualizada);
         historialEntity.setUsuarioResponsable(usuario);
 
         historialSolicitudRepository.save(historialEntity);
 
         return SolicitudMapper.toResponse(
-                solicitudDomain,
+                solicitudActualizadaDomain,
                 SolicitudMapper.toHistorialDomainList(obtenerHistorialEntities(solicitudId))
         );
     }
 
     public String generarResumenSolicitud(Long solicitudId) {
-
         SolicitudEntity solicitud = obtenerSolicitudEntity(solicitudId);
         List<HistorialSolicitudEntity> historial = obtenerHistorialEntities(solicitudId);
 
@@ -517,38 +535,26 @@ public class SolicitudService implements
             contenido.append("Prioridad: ").append(solicitud.getPrioridad()).append("\n");
         }
 
-        if (solicitud.getCanalOrigen() != null) {
-            contenido.append("Canal: ").append(solicitud.getCanalOrigen()).append("\n");
+        if (solicitud.getJustificacionPrioridad() != null) {
+            contenido.append("Justificación prioridad: ").append(solicitud.getJustificacionPrioridad()).append("\n");
         }
 
-        if (solicitud.getFechaRegistro() != null) {
-            contenido.append("Fecha de registro: ").append(solicitud.getFechaRegistro()).append("\n");
-        }
+        contenido.append("Descripción: ").append(solicitud.getDescripcion()).append("\n");
+        contenido.append("Solicitante: ").append(solicitud.getSolicitante().getNombre()).append("\n");
 
         if (solicitud.getResponsableAsignado() != null) {
             contenido.append("Responsable: ").append(solicitud.getResponsableAsignado().getNombre()).append("\n");
         }
 
-        contenido.append("Descripción: ").append(solicitud.getDescripcion()).append("\n");
-
-        if (solicitud.getObservacionCierre() != null && !solicitud.getObservacionCierre().isBlank()) {
-            contenido.append("Observación de cierre: ").append(solicitud.getObservacionCierre()).append("\n");
-        }
-
         contenido.append("\nHistorial:\n");
-
         for (HistorialSolicitudEntity h : historial) {
-            contenido.append("- ").append(h.getAccion());
-
-            if (h.getObservaciones() != null && !h.getObservaciones().isBlank()) {
-                contenido.append(" - ").append(h.getObservaciones());
-            }
-
-            if (h.getFechaHora() != null) {
-                contenido.append(" (").append(h.getFechaHora()).append(")");
-            }
-
-            contenido.append("\n");
+            contenido.append("- ")
+                    .append(h.getFechaHora())
+                    .append(" | ")
+                    .append(h.getAccion())
+                    .append(" | ")
+                    .append(h.getObservaciones())
+                    .append("\n");
         }
 
         return iaService.generarResumen(contenido.toString());
@@ -566,55 +572,39 @@ public class SolicitudService implements
 
         validarPaginacion(page, size);
         Sort sort = construirSort(sortBy, direction);
+
         Pageable pageable = PageRequest.of(page, size, sort);
+        Specification<SolicitudEntity> specification = construirEspecificacion(estado, tipo, prioridad, responsableId);
 
-        Specification<SolicitudEntity> specification = construirEspecificacion(
-                estado,
-                tipo,
-                prioridad,
-                responsableId
-        );
+        Page<SolicitudEntity> resultPage = solicitudRepository.findAll(specification, pageable);
 
-        Page<SolicitudEntity> solicitudesPage = solicitudRepository.findAll(specification, pageable);
+        List<SolicitudResponse> content = resultPage.getContent().stream()
+                .map(entity -> SolicitudMapper.toResponse(
+                        SolicitudMapper.toDomain(entity),
+                        SolicitudMapper.toHistorialDomainList(obtenerHistorialEntities(entity.getId()))
+                ))
+                .toList();
 
-        List<SolicitudResponse> content = new ArrayList<>();
+        PageResponse<SolicitudResponse> response = new PageResponse<>();
+        response.setContent(content);
+        response.setPage(resultPage.getNumber());
+        response.setSize(resultPage.getSize());
+        response.setTotalElements(resultPage.getTotalElements());
+        response.setTotalPages(resultPage.getTotalPages());
+        response.setFirst(resultPage.isFirst());
+        response.setLast(resultPage.isLast());
+        response.setSortBy(sortBy);
+        response.setDirection(direction);
 
-        for (SolicitudEntity entity : solicitudesPage.getContent()) {
-            List<HistorialSolicitudEntity> historialEntities =
-                    historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(entity.getId());
-
-            Solicitud solicitudDomain = SolicitudMapper.toDomain(entity);
-
-            content.add(
-                    SolicitudMapper.toResponse(
-                            solicitudDomain,
-                            SolicitudMapper.toHistorialDomainList(historialEntities)
-                    )
-            );
-        }
-
-        return new PageResponse<>(
-                content,
-                solicitudesPage.getNumber(),
-                solicitudesPage.getSize(),
-                solicitudesPage.getTotalElements(),
-                solicitudesPage.getTotalPages(),
-                solicitudesPage.isFirst(),
-                solicitudesPage.isLast(),
-                sortBy,
-                direction
-        );
+        return response;
     }
 
     public SolicitudResponse obtenerSolicitudPorId(Long id) {
         SolicitudEntity solicitudEntity = obtenerSolicitudEntity(id);
 
-        List<HistorialSolicitudEntity> historialEntities = obtenerHistorialEntities(id);
-        Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
-
         return SolicitudMapper.toResponse(
-                solicitudDomain,
-                SolicitudMapper.toHistorialDomainList(historialEntities)
+                SolicitudMapper.toDomain(solicitudEntity),
+                SolicitudMapper.toHistorialDomainList(obtenerHistorialEntities(id))
         );
     }
 }

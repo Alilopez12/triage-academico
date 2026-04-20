@@ -17,41 +17,69 @@ public class SolicitudResponse {
     @Getter
     @Setter
     private Long id;
+
     @Getter
     @Setter
     private TipoSolicitud tipo;
+
+    @Getter
     @Setter
     private String descripcion;
+
+    @Getter
     @Setter
     private CanalOrigen canalOrigen;
+
+    @Getter
     @Setter
     private LocalDateTime fechaRegistro;
+
     @Getter
     @Setter
     private Prioridad prioridad;
+
     @Getter
     @Setter
     private String justificacionPrioridad;
+
     @Getter
     @Setter
     private EstadoSolicitud estado;
+
+    @Getter
     @Setter
     private ImpactoAcademico impactoAcademico;
+
+    @Getter
     @Setter
     private Long solicitanteId;
+
+    @Getter
     @Setter
     private String nombreSolicitante;
+
+    @Getter
     @Setter
     private Long responsableAsignadoId;
+
+    @Getter
     @Setter
     private String nombreResponsableAsignado;
+
+    @Getter
     @Setter
     private String observacionCierre;
+
     @Getter
     @Setter
     private List<HistorialSolicitudResponse> historial;
+
+    @Getter
     @Setter
     private LocalDate fechaLimite;
+
+    @Getter
+    @Setter
     private Long version;
 
     public SolicitudResponse() {
@@ -72,7 +100,8 @@ public class SolicitudResponse {
                              String nombreResponsableAsignado,
                              String observacionCierre,
                              LocalDate fechaLimite,
-                             List<HistorialSolicitudResponse> historial) {
+                             List<HistorialSolicitudResponse> historial,
+                             Long version) {
         this.id = id;
         this.tipo = tipo;
         this.descripcion = descripcion;
@@ -89,48 +118,6 @@ public class SolicitudResponse {
         this.observacionCierre = observacionCierre;
         this.historial = historial;
         this.fechaLimite = fechaLimite;
-    }
-
-    public String getDescripcion() {
-        return descripcion;
-    }
-
-    public CanalOrigen getCanalOrigen() {
-        return canalOrigen;
-    }
-
-    public LocalDateTime getFechaRegistro() {
-        return fechaRegistro;
-    }
-
-    public ImpactoAcademico getImpactoAcademico() {
-        return impactoAcademico;
-    }
-
-    public Long getSolicitanteId() {
-        return solicitanteId;
-    }
-
-    public String getNombreSolicitante() {
-        return nombreSolicitante;
-    }
-
-    public Long getResponsableAsignadoId() {
-        return responsableAsignadoId;
-    }
-
-    public String getNombreResponsableAsignado() {
-        return nombreResponsableAsignado;
-    }
-
-    public String getObservacionCierre() {
-        return observacionCierre;
-    }
-
-    public LocalDate getFechaLimite() {
-        return fechaLimite;
-    }
-
-    public void setVersion(Long version) {
+        this.version = version;
     }
 }

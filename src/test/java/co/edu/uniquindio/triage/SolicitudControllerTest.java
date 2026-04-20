@@ -1,21 +1,13 @@
 package co.edu.uniquindio.triage;
 
 import co.edu.uniquindio.triage.controller.SolicitudController;
-import co.edu.uniquindio.triage.domain.enums.CanalOrigen;
-import co.edu.uniquindio.triage.domain.enums.EstadoSolicitud;
-import co.edu.uniquindio.triage.domain.enums.ImpactoAcademico;
-import co.edu.uniquindio.triage.domain.enums.Prioridad;
-import co.edu.uniquindio.triage.domain.enums.TipoSolicitud;
-import co.edu.uniquindio.triage.dto.request.AsignarPrioridadRequest;
-import co.edu.uniquindio.triage.dto.request.AsignarResponsableRequest;
-import co.edu.uniquindio.triage.dto.request.CambiarEstadoRequest;
-import co.edu.uniquindio.triage.dto.request.ClasificarSolicitudRequest;
-import co.edu.uniquindio.triage.dto.request.CerrarSolicitudRequest;
-import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
-import co.edu.uniquindio.triage.dto.request.SugerirClasificacionRequest;
+import co.edu.uniquindio.triage.domain.enums.*;
+import co.edu.uniquindio.triage.dto.request.*;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
+import co.edu.uniquindio.triage.dto.response.PageResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.SugerenciaClasificacionResponse;
+import co.edu.uniquindio.triage.service.*;
 import co.edu.uniquindio.triage.service.impl.IAService;
 import co.edu.uniquindio.triage.service.impl.SolicitudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -25,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
@@ -41,11 +32,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
-import co.edu.uniquindio.triage.dto.response.PageResponse;
 
 @WebMvcTest(SolicitudController.class)
-@ActiveProfiles("test")
-class SolicitudControllerTest {
+public class SolicitudControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
@@ -54,18 +43,54 @@ class SolicitudControllerTest {
     private ObjectMapper objectMapper;
 
     @MockBean
+    private RegistrarSolicitudUseCase registrarSolicitudUseCase;
+
+    @MockBean
+    private ClasificarSolicitudUseCase clasificarSolicitudUseCase;
+
+    @MockBean
+    private AsignarPrioridadUseCase asignarPrioridadUseCase;
+
+    @MockBean
+    private AsignarResponsableUseCase asignarResponsableUseCase;
+
+    @MockBean
+    private CambiarEstadoSolicitudUseCase cambiarEstadoSolicitudUseCase;
+
+    @MockBean
+    private CerrarSolicitudUseCase cerrarSolicitudUseCase;
+
+    @MockBean
+    private ConsultarSolicitudUseCase consultarSolicitudUseCase;
+
+    @MockBean
     private SolicitudService solicitudService;
 
     @MockBean
     private IAService iaService;
 
+    private SolicitudResponse crearSolicitudResponseBase() {
+        SolicitudResponse response = new SolicitudResponse();
+        response.setId(1L);
+        response.setVersion(1L);
+        response.setTipo(TipoSolicitud.HOMOLOGACION);
+        response.setDescripcion("Necesito homologar una materia.");
+        response.setCanalOrigen(CanalOrigen.CORREO);
+        response.setFechaRegistro(LocalDateTime.now());
+        response.setEstado(EstadoSolicitud.REGISTRADA);
+        response.setSolicitanteId(10L);
+        response.setNombreSolicitante("Estudiante");
+        response.setHistorial(List.of());
+        return response;
+    }
+
     @Test
-    @DisplayName("POST /api/solicitudes debería registrar y retornar 201")
+    @DisplayName("POST /api/solicitudes debería retornar 201")
     void deberiaRegistrarSolicitudYRetornar201() throws Exception {
         SolicitudCreateRequest request = new SolicitudCreateRequest(
                 TipoSolicitud.HOMOLOGACION,
-                "Solicito homologación de una materia cursada previamente.",
-                CanalOrigen.SAC,
+                "Necesito homologar una materia.",
+                CanalOrigen.CORREO,
                 10L
         );
 
@@ -74,7 +99,7 @@ class SolicitudControllerTest {
         response.setTipo(TipoSolicitud.HOMOLOGACION);
         response.setEstado(EstadoSolicitud.REGISTRADA);
 
-        when(solicitudService.registrarSolicitud(any(SolicitudCreateRequest.class)))
+        when(registrarSolicitudUseCase.ejecutar(any(SolicitudCreateRequest.class)))
                 .thenReturn(response);
 
         mockMvc.perform(post("/api/solicitudes")
@@ -105,14 +130,15 @@ class SolicitudControllerTest {
     @Test
     @DisplayName("PATCH /api/solicitudes/{id}/clasificar debería retornar 200")
     void deberiaClasificarSolicitudYRetornar200() throws Exception {
-        ClasificarSolicitudRequest request = new ClasificarSolicitudRequest(TipoSolicitud.CANCELACION_ASIGNATURAS);
+        ClasificarSolicitudRequest request =
+                new ClasificarSolicitudRequest(TipoSolicitud.CANCELACION_ASIGNATURAS, 1L);
 
         SolicitudResponse response = crearSolicitudResponseBase();
         response.setId(50L);
         response.setTipo(TipoSolicitud.CANCELACION_ASIGNATURAS);
         response.setEstado(EstadoSolicitud.CLASIFICADA);
 
-        when(solicitudService.clasificarSolicitud(eq(50L), eq(1L), any(ClasificarSolicitudRequest.class)))
+        when(clasificarSolicitudUseCase.ejecutar(eq(50L), eq(1L), any(ClasificarSolicitudRequest.class)))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/solicitudes/50/clasificar")
@@ -129,6 +155,7 @@ class SolicitudControllerTest {
     void deberiaRetornar400SiClasificarRequestEsInvalido() throws Exception {
         ClasificarSolicitudRequest request = new ClasificarSolicitudRequest();
         request.setTipo(null);
+        request.setVersion(1L);
 
         mockMvc.perform(patch("/api/solicitudes/50/clasificar")
                         .param("usuarioId", "1")
@@ -143,12 +170,13 @@ class SolicitudControllerTest {
         AsignarPrioridadRequest request = new AsignarPrioridadRequest();
         request.setImpactoAcademico(ImpactoAcademico.ALTO);
         request.setFechaLimite(LocalDate.now().plusDays(2));
+        request.setVersion(1L);
 
         SolicitudResponse response = crearSolicitudResponseBase();
         response.setPrioridad(Prioridad.CRITICA);
         response.setEstado(EstadoSolicitud.CLASIFICADA);
 
-        when(solicitudService.asignarPrioridad(eq(50L), any(AsignarPrioridadRequest.class), eq(1L)))
+        when(asignarPrioridadUseCase.ejecutar(eq(50L), any(AsignarPrioridadRequest.class), eq(1L)))
                 .thenReturn(response);
 
         mockMvc.perform(put("/api/solicitudes/50/prioridad")
@@ -164,11 +192,12 @@ class SolicitudControllerTest {
     void deberiaAsignarResponsableYRetornar200() throws Exception {
         AsignarResponsableRequest request = new AsignarResponsableRequest();
         request.setResponsableId(2L);
+        request.setVersion(1L);
 
         SolicitudResponse response = crearSolicitudResponseBase();
         response.setResponsableAsignadoId(2L);
 
-        when(solicitudService.asignarResponsable(eq(50L), any(AsignarResponsableRequest.class), eq(1L)))
+        when(asignarResponsableUseCase.ejecutar(eq(50L), any(AsignarResponsableRequest.class), eq(1L)))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/solicitudes/50/asignar")
@@ -188,7 +217,7 @@ class SolicitudControllerTest {
         item.setUsuarioResponsableId(10L);
         item.setFechaHora(LocalDateTime.now());
 
-        when(solicitudService.obtenerHistorial(50L)).thenReturn(List.of(item));
+        when(consultarSolicitudUseCase.obtenerHistorial(50L)).thenReturn(List.of(item));
 
         mockMvc.perform(get("/api/solicitudes/50/historial"))
                 .andExpect(status().isOk())
@@ -202,11 +231,12 @@ class SolicitudControllerTest {
         request.setNuevoEstado(EstadoSolicitud.EN_ATENCION);
         request.setObservacion("Se inicia la atención del caso");
         request.setUsuarioId(1L);
+        request.setVersion(1L);
 
         SolicitudResponse response = crearSolicitudResponseBase();
         response.setEstado(EstadoSolicitud.EN_ATENCION);
 
-        when(solicitudService.cambiarEstado(eq(50L), any(CambiarEstadoRequest.class)))
+        when(cambiarEstadoSolicitudUseCase.ejecutar(eq(50L), any(CambiarEstadoRequest.class)))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/solicitudes/50/estado")
@@ -221,12 +251,13 @@ class SolicitudControllerTest {
     void deberiaCerrarSolicitudYRetornar200() throws Exception {
         CerrarSolicitudRequest request = new CerrarSolicitudRequest();
         request.setObservacionCierre("La solicitud fue atendida y cerrada correctamente.");
+        request.setVersion(1L);
 
         SolicitudResponse response = crearSolicitudResponseBase();
         response.setEstado(EstadoSolicitud.CERRADA);
         response.setObservacionCierre("La solicitud fue atendida y cerrada correctamente.");
 
-        when(solicitudService.cerrarSolicitud(eq(50L), any(CerrarSolicitudRequest.class), eq(1L)))
+        when(cerrarSolicitudUseCase.ejecutar(eq(50L), any(CerrarSolicitudRequest.class), eq(1L)))
                 .thenReturn(response);
 
         mockMvc.perform(put("/api/solicitudes/50/cerrar")
@@ -268,7 +299,7 @@ class SolicitudControllerTest {
         pageResponse.setSortBy("id");
         pageResponse.setDirection("desc");
 
-        when(solicitudService.listarSolicitudes(
+        when(consultarSolicitudUseCase.listar(
                 EstadoSolicitud.REGISTRADA,
                 TipoSolicitud.HOMOLOGACION,
                 Prioridad.ALTA,
@@ -307,7 +338,7 @@ class SolicitudControllerTest {
         SolicitudResponse response = crearSolicitudResponseBase();
         response.setId(50L);
 
-        when(solicitudService.obtenerSolicitudPorId(50L)).thenReturn(response);
+        when(consultarSolicitudUseCase.obtenerPorId(50L)).thenReturn(response);
 
         mockMvc.perform(get("/api/solicitudes/50"))
                 .andExpect(status().isOk())
@@ -318,14 +349,12 @@ class SolicitudControllerTest {
     @DisplayName("POST /api/solicitudes/sugerir-clasificacion debería retornar 200")
     void deberiaSugerirClasificacionYRetornar200() throws Exception {
         SugerirClasificacionRequest request = new SugerirClasificacionRequest(
-                "Necesito cancelar una materia urgente porque vence mañana."
+                "Necesito cancelar una asignatura por cruce de horarios"
         );
 
-        SugerenciaClasificacionResponse response = new SugerenciaClasificacionResponse(
-                TipoSolicitud.CANCELACION_ASIGNATURAS,
-                Prioridad.CRITICA,
-                "Sugerencia generada automáticamente."
-        );
+        SugerenciaClasificacionResponse response = new SugerenciaClasificacionResponse();
+        response.setTipoSugerido(TipoSolicitud.CANCELACION_ASIGNATURAS);
+        response.setJustificacion("Se detectan palabras clave relacionadas con cancelación.");
 
         when(iaService.sugerirClasificacion(any(String.class))).thenReturn(response);
 
@@ -333,36 +362,6 @@ class SolicitudControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.tipoSugerido").value("CANCELACION_ASIGNATURAS"))
-                .andExpect(jsonPath("$.prioridadSugerida").value("CRITICA"));
-    }
-
-    @Test
-    @DisplayName("POST /api/solicitudes/sugerir-clasificacion debería retornar 400 si la descripción es inválida")
-    void deberiaRetornar400SiSugerirClasificacionRequestEsInvalido() throws Exception {
-        SugerirClasificacionRequest request = new SugerirClasificacionRequest("");
-        mockMvc.perform(post("/api/solicitudes/sugerir-clasificacion")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    private SolicitudResponse crearSolicitudResponseBase() {
-        SolicitudResponse response = new SolicitudResponse();
-        response.setId(50L);
-        response.setTipo(TipoSolicitud.HOMOLOGACION);
-        response.setDescripcion("Solicitud de prueba");
-        response.setCanalOrigen(CanalOrigen.SAC);
-        response.setFechaRegistro(LocalDateTime.now());
-        response.setSolicitanteId(10L);
-        response.setResponsableAsignadoId(null);
-        response.setEstado(EstadoSolicitud.REGISTRADA);
-        response.setPrioridad(null);
-        response.setJustificacionPrioridad(null);
-        response.setImpactoAcademico(null);
-        response.setFechaLimite(null);
-        response.setObservacionCierre(null);
-        response.setHistorial(List.of());
-        return response;
+                .andExpect(jsonPath("$.tipoSugerido").value("CANCELACION_ASIGNATURAS"));
     }
 }

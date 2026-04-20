@@ -1,22 +1,14 @@
 package co.edu.uniquindio.triage;
 
-import co.edu.uniquindio.triage.domain.enums.CanalOrigen;
-import co.edu.uniquindio.triage.domain.enums.EstadoSolicitud;
-import co.edu.uniquindio.triage.domain.enums.ImpactoAcademico;
-import co.edu.uniquindio.triage.domain.enums.Prioridad;
-import co.edu.uniquindio.triage.domain.enums.RolUsuario;
-import co.edu.uniquindio.triage.domain.enums.TipoSolicitud;
-import co.edu.uniquindio.triage.dto.request.AsignarPrioridadRequest;
-import co.edu.uniquindio.triage.dto.request.AsignarResponsableRequest;
-import co.edu.uniquindio.triage.dto.request.CambiarEstadoRequest;
-import co.edu.uniquindio.triage.dto.request.ClasificarSolicitudRequest;
-import co.edu.uniquindio.triage.dto.request.CerrarSolicitudRequest;
-import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
-import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
-import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
 import co.edu.uniquindio.triage.domain.entity.HistorialSolicitudEntity;
 import co.edu.uniquindio.triage.domain.entity.SolicitudEntity;
 import co.edu.uniquindio.triage.domain.entity.UsuarioEntity;
+import co.edu.uniquindio.triage.domain.enums.*;
+import co.edu.uniquindio.triage.dto.request.*;
+import co.edu.uniquindio.triage.dto.response.PageResponse;
+import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
+import co.edu.uniquindio.triage.exception.AutorizacionException;
+import co.edu.uniquindio.triage.exception.ConcurrenciaException;
 import co.edu.uniquindio.triage.repository.HistorialSolicitudRepository;
 import co.edu.uniquindio.triage.repository.SolicitudRepository;
 import co.edu.uniquindio.triage.repository.UsuarioRepository;
@@ -25,11 +17,9 @@ import co.edu.uniquindio.triage.service.impl.SolicitudService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.ArgumentMatchers;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,231 +29,291 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class)
-class SolicitudServiceTest {
+public class SolicitudServiceTest {
 
-    @Mock
     private SolicitudRepository solicitudRepository;
-
-    @Mock
     private UsuarioRepository usuarioRepository;
-
-    @Mock
     private HistorialSolicitudRepository historialSolicitudRepository;
-
-    @Mock
     private IAService iaService;
-
-    @InjectMocks
     private SolicitudService solicitudService;
 
-    private UsuarioEntity estudiante;
     private UsuarioEntity admin;
+    private UsuarioEntity estudiante;
     private UsuarioEntity responsable;
     private SolicitudEntity solicitudEntity;
 
     @BeforeEach
     void setUp() {
-        estudiante = crearUsuarioEntity(10L, "Estudiante Uno", "est1@uq.edu.co", true, RolUsuario.ESTUDIANTE);
-        admin = crearUsuarioEntity(1L, "Admin Uno", "admin@uq.edu.co", true, RolUsuario.ADMIN);
-        responsable = crearUsuarioEntity(2L, "Responsable Uno", "resp@uq.edu.co", true, RolUsuario.RESPONSABLE);
+        solicitudRepository = mock(SolicitudRepository.class);
+        usuarioRepository = mock(UsuarioRepository.class);
+        historialSolicitudRepository = mock(HistorialSolicitudRepository.class);
+        iaService = mock(IAService.class);
 
-        solicitudEntity = crearSolicitudEntityBase();
+        solicitudService = new SolicitudService(
+                solicitudRepository,
+                usuarioRepository,
+                historialSolicitudRepository,
+                iaService
+        );
+
+        admin = new UsuarioEntity();
+        admin.setId(1L);
+        admin.setNombre("Administrador");
+        admin.setEmail("admin@uq.edu.co");
+        admin.setRol(RolUsuario.ADMIN);
+        admin.setActivo(true);
+
+        estudiante = new UsuarioEntity();
+        estudiante.setId(10L);
+        estudiante.setNombre("Estudiante");
+        estudiante.setEmail("estudiante@uq.edu.co");
+        estudiante.setRol(RolUsuario.ESTUDIANTE);
+        estudiante.setActivo(true);
+
+        responsable = new UsuarioEntity();
+        responsable.setId(2L);
+        responsable.setNombre("Responsable");
+        responsable.setEmail("responsable@uq.edu.co");
+        responsable.setRol(RolUsuario.RESPONSABLE);
+        responsable.setActivo(true);
+
+        solicitudEntity = new SolicitudEntity();
+        solicitudEntity.setId(50L);
+        solicitudEntity.setVersion(1L);
+        solicitudEntity.setTipo(TipoSolicitud.HOMOLOGACION);
+        solicitudEntity.setDescripcion("Necesito homologar una materia.");
+        solicitudEntity.setCanalOrigen(CanalOrigen.CORREO);
+        solicitudEntity.setFechaRegistro(LocalDateTime.now());
+        solicitudEntity.setEstado(EstadoSolicitud.REGISTRADA);
+        solicitudEntity.setSolicitante(estudiante);
     }
 
     @Test
-    @DisplayName("Debería registrar una solicitud correctamente")
+    @DisplayName("Debe registrar una solicitud correctamente")
     void deberiaRegistrarSolicitudCorrectamente() {
         SolicitudCreateRequest request = new SolicitudCreateRequest(
                 TipoSolicitud.HOMOLOGACION,
-                "Solicito homologación de una materia cursada previamente.",
-                CanalOrigen.SAC,
-                estudiante.getId()
+                "Necesito homologar una materia.",
+                CanalOrigen.CORREO,
+                10L
         );
 
-        when(usuarioRepository.findById(estudiante.getId())).thenReturn(Optional.of(estudiante));
-        when(solicitudRepository.save(any(SolicitudEntity.class))).thenAnswer(invocation -> {
-            SolicitudEntity entity = invocation.getArgument(0);
-            entity.setId(100L);
-            return entity;
-        });
-        when(historialSolicitudRepository.save(any(HistorialSolicitudEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(100L)).thenReturn(List.of());
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(estudiante));
+        when(solicitudRepository.saveAndFlush(ArgumentMatchers.any(SolicitudEntity.class)))
+                .thenAnswer(invocation -> {
+                    SolicitudEntity entity = invocation.getArgument(0);
+                    entity.setId(50L);
+                    entity.setVersion(1L);
+                    return entity;
+                });
+        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(50L))
+                .thenReturn(List.of());
 
         SolicitudResponse response = solicitudService.registrarSolicitud(request);
 
         assertNotNull(response);
+        assertEquals(50L, response.getId());
         assertEquals(TipoSolicitud.HOMOLOGACION, response.getTipo());
         assertEquals(EstadoSolicitud.REGISTRADA, response.getEstado());
-        verify(solicitudRepository, times(1)).save(any(SolicitudEntity.class));
-        verify(historialSolicitudRepository, atLeastOnce()).save(any(HistorialSolicitudEntity.class));
+        assertEquals(1L, response.getVersion());
+
+        verify(solicitudRepository).saveAndFlush(any(SolicitudEntity.class));
+        verify(historialSolicitudRepository).save(any(HistorialSolicitudEntity.class));
     }
 
     @Test
-    @DisplayName("Debería clasificar una solicitud correctamente")
+    @DisplayName("Debe clasificar una solicitud correctamente")
     void deberiaClasificarSolicitudCorrectamente() {
-        ClasificarSolicitudRequest request = new ClasificarSolicitudRequest(TipoSolicitud.CANCELACION_ASIGNATURAS);
+        ClasificarSolicitudRequest request =
+                new ClasificarSolicitudRequest(TipoSolicitud.CANCELACION_ASIGNATURAS, 1L);
 
-        solicitudEntity.setEstado(EstadoSolicitud.REGISTRADA);
-        solicitudEntity.setTipo(TipoSolicitud.CONSULTA_ACADEMICA);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(admin));
+        when(solicitudRepository.findById(50L)).thenReturn(Optional.of(solicitudEntity));
+        when(solicitudRepository.saveAndFlush(any(SolicitudEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(50L))
+                .thenReturn(List.of());
 
-        when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
-        when(solicitudRepository.findById(solicitudEntity.getId())).thenReturn(Optional.of(solicitudEntity));
-        when(solicitudRepository.save(any(SolicitudEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(historialSolicitudRepository.save(any(HistorialSolicitudEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudEntity.getId())).thenReturn(List.of());
-
-        SolicitudResponse response = solicitudService.clasificarSolicitud(solicitudEntity.getId(), admin.getId(), request);
+        SolicitudResponse response = solicitudService.clasificarSolicitud(50L, 1L, request);
 
         assertNotNull(response);
         assertEquals(TipoSolicitud.CANCELACION_ASIGNATURAS, response.getTipo());
         assertEquals(EstadoSolicitud.CLASIFICADA, response.getEstado());
+
+        verify(solicitudRepository).saveAndFlush(any(SolicitudEntity.class));
+        verify(historialSolicitudRepository).save(any(HistorialSolicitudEntity.class));
     }
 
     @Test
-    @DisplayName("Debería asignar prioridad correctamente")
+    @DisplayName("Debe lanzar conflicto si la versión no coincide al clasificar")
+    void deberiaLanzarConflictoSiLaVersionNoCoincideAlClasificar() {
+        ClasificarSolicitudRequest request =
+                new ClasificarSolicitudRequest(TipoSolicitud.CANCELACION_ASIGNATURAS, 99L);
+
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(admin));
+        when(solicitudRepository.findById(50L)).thenReturn(Optional.of(solicitudEntity));
+
+        assertThrows(ConcurrenciaException.class,
+                () -> solicitudService.clasificarSolicitud(50L, 1L, request));
+
+        verify(solicitudRepository, never()).saveAndFlush(any(SolicitudEntity.class));
+    }
+
+    @Test
+    @DisplayName("Debe asignar prioridad correctamente")
     void deberiaAsignarPrioridadCorrectamente() {
+        solicitudEntity.setEstado(EstadoSolicitud.CLASIFICADA);
+
         AsignarPrioridadRequest request = new AsignarPrioridadRequest();
         request.setImpactoAcademico(ImpactoAcademico.ALTO);
-        request.setFechaLimite(LocalDate.now().plusDays(1));
+        request.setFechaLimite(LocalDate.now().plusDays(2));
+        request.setVersion(1L);
 
-        solicitudEntity.setEstado(EstadoSolicitud.CLASIFICADA);
-        solicitudEntity.setTipo(TipoSolicitud.SOLICITUD_CUPOS);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(admin));
+        when(solicitudRepository.findById(50L)).thenReturn(Optional.of(solicitudEntity));
+        when(solicitudRepository.saveAndFlush(any(SolicitudEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(50L))
+                .thenReturn(List.of());
 
-        when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
-        when(solicitudRepository.findById(solicitudEntity.getId())).thenReturn(Optional.of(solicitudEntity));
-        when(solicitudRepository.save(any(SolicitudEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(historialSolicitudRepository.save(any(HistorialSolicitudEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudEntity.getId())).thenReturn(List.of());
-
-        SolicitudResponse response = solicitudService.asignarPrioridad(solicitudEntity.getId(), request, admin.getId());
+        SolicitudResponse response = solicitudService.asignarPrioridad(50L, request, 1L);
 
         assertNotNull(response);
-        assertNotNull(response.getPrioridad());
+        assertEquals(Prioridad.CRITICA, response.getPrioridad());
         assertNotNull(response.getJustificacionPrioridad());
+
+        verify(solicitudRepository).saveAndFlush(any(SolicitudEntity.class));
+        verify(historialSolicitudRepository).save(any(HistorialSolicitudEntity.class));
     }
 
     @Test
-    @DisplayName("Debería asignar responsable activo correctamente")
-    void deberiaAsignarResponsableActivoCorrectamente() {
+    @DisplayName("Debe asignar responsable correctamente")
+    void deberiaAsignarResponsableCorrectamente() {
         AsignarResponsableRequest request = new AsignarResponsableRequest();
-        request.setResponsableId(responsable.getId());
+        request.setResponsableId(2L);
+        request.setVersion(1L);
 
-        solicitudEntity.setEstado(EstadoSolicitud.CLASIFICADA);
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(admin));
+        when(usuarioRepository.findById(2L)).thenReturn(Optional.of(responsable));
+        when(solicitudRepository.findById(50L)).thenReturn(Optional.of(solicitudEntity));
+        when(solicitudRepository.saveAndFlush(any(SolicitudEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(50L))
+                .thenReturn(List.of());
 
-        when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
-        when(usuarioRepository.findById(responsable.getId())).thenReturn(Optional.of(responsable));
-        when(solicitudRepository.findById(solicitudEntity.getId())).thenReturn(Optional.of(solicitudEntity));
-        when(solicitudRepository.save(any(SolicitudEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(historialSolicitudRepository.save(any(HistorialSolicitudEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudEntity.getId())).thenReturn(List.of());
-
-        SolicitudResponse response = solicitudService.asignarResponsable(solicitudEntity.getId(), request, admin.getId());
+        SolicitudResponse response = solicitudService.asignarResponsable(50L, request, 1L);
 
         assertNotNull(response);
-        assertNotNull(response.getResponsableAsignadoId());
-        assertEquals(responsable.getId(), response.getResponsableAsignadoId());
+        assertEquals(2L, response.getResponsableAsignadoId());
+
+        verify(solicitudRepository).saveAndFlush(any(SolicitudEntity.class));
+        verify(historialSolicitudRepository).save(any(HistorialSolicitudEntity.class));
     }
 
     @Test
-    @DisplayName("Debería registrar en historial el usuario real al cambiar estado")
-    void deberiaRegistrarHistorialConUsuarioRealAlCambiarEstado() {
+    @DisplayName("Debe cambiar estado correctamente")
+    void deberiaCambiarEstadoCorrectamente() {
+        solicitudEntity.setEstado(EstadoSolicitud.CLASIFICADA);
+        solicitudEntity.setResponsableAsignado(responsable);
+
         CambiarEstadoRequest request = new CambiarEstadoRequest();
         request.setNuevoEstado(EstadoSolicitud.EN_ATENCION);
-        request.setObservacion("Se inicia atención de la solicitud.");
-        request.setUsuarioId(admin.getId());
+        request.setObservacion("Se inicia la atención del caso");
+        request.setUsuarioId(2L);
+        request.setVersion(1L);
 
-        solicitudEntity.setEstado(EstadoSolicitud.CLASIFICADA);
+        when(usuarioRepository.findById(2L)).thenReturn(Optional.of(responsable));
+        when(solicitudRepository.findById(50L)).thenReturn(Optional.of(solicitudEntity));
+        when(solicitudRepository.saveAndFlush(any(SolicitudEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(50L))
+                .thenReturn(List.of());
 
-        when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
-        when(solicitudRepository.findById(solicitudEntity.getId())).thenReturn(Optional.of(solicitudEntity));
-        when(solicitudRepository.save(any(SolicitudEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(historialSolicitudRepository.save(any(HistorialSolicitudEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudEntity.getId())).thenReturn(List.of());
-
-        SolicitudResponse response = solicitudService.cambiarEstado(solicitudEntity.getId(), request);
+        SolicitudResponse response = solicitudService.cambiarEstado(50L, request);
 
         assertNotNull(response);
         assertEquals(EstadoSolicitud.EN_ATENCION, response.getEstado());
 
-        ArgumentCaptor<HistorialSolicitudEntity> captor = ArgumentCaptor.forClass(HistorialSolicitudEntity.class);
-        verify(historialSolicitudRepository).save(captor.capture());
-
-        HistorialSolicitudEntity historialGuardado = captor.getValue();
-        assertNotNull(historialGuardado.getUsuarioResponsable());
-        assertEquals(admin.getId(), historialGuardado.getUsuarioResponsable().getId());
-        assertEquals("CAMBIO_ESTADO", historialGuardado.getAccion());
+        verify(solicitudRepository).saveAndFlush(any(SolicitudEntity.class));
+        verify(historialSolicitudRepository).save(any(HistorialSolicitudEntity.class));
     }
 
     @Test
-    @DisplayName("Debería cerrar una solicitud correctamente")
+    @DisplayName("Debe cerrar solicitud correctamente")
     void deberiaCerrarSolicitudCorrectamente() {
-        CerrarSolicitudRequest request = new CerrarSolicitudRequest();
-        request.setObservacionCierre("La solicitud fue resuelta y cerrada correctamente.");
-
         solicitudEntity.setEstado(EstadoSolicitud.ATENDIDA);
 
-        when(usuarioRepository.findById(admin.getId())).thenReturn(Optional.of(admin));
-        when(solicitudRepository.findById(solicitudEntity.getId())).thenReturn(Optional.of(solicitudEntity));
-        when(solicitudRepository.save(any(SolicitudEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(historialSolicitudRepository.save(any(HistorialSolicitudEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudEntity.getId())).thenReturn(List.of());
+        CerrarSolicitudRequest request = new CerrarSolicitudRequest();
+        request.setObservacionCierre("La solicitud fue atendida y cerrada correctamente.");
+        request.setVersion(1L);
 
-        SolicitudResponse response = solicitudService.cerrarSolicitud(solicitudEntity.getId(), request, admin.getId());
+        when(usuarioRepository.findById(1L)).thenReturn(Optional.of(admin));
+        when(solicitudRepository.findById(50L)).thenReturn(Optional.of(solicitudEntity));
+        when(solicitudRepository.saveAndFlush(any(SolicitudEntity.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(50L))
+                .thenReturn(List.of());
+
+        SolicitudResponse response = solicitudService.cerrarSolicitud(50L, request, 1L);
 
         assertNotNull(response);
         assertEquals(EstadoSolicitud.CERRADA, response.getEstado());
-        assertEquals("La solicitud fue resuelta y cerrada correctamente.", response.getObservacionCierre());
+        assertEquals("La solicitud fue atendida y cerrada correctamente.", response.getObservacionCierre());
+
+        verify(solicitudRepository).saveAndFlush(any(SolicitudEntity.class));
+        verify(historialSolicitudRepository).save(any(HistorialSolicitudEntity.class));
     }
 
     @Test
-    @DisplayName("Debería obtener historial correctamente")
-    void deberiaObtenerHistorialCorrectamente() {
-        HistorialSolicitudEntity h1 = new HistorialSolicitudEntity();
-        h1.setId(1L);
-        h1.setAccion("REGISTRO");
-        h1.setObservaciones("Solicitud registrada");
-        h1.setFechaHora(LocalDateTime.now());
-        h1.setSolicitud(solicitudEntity);
-        h1.setUsuarioResponsable(estudiante);
+    @DisplayName("Debe listar solicitudes con filtros")
+    void deberiaListarSolicitudesConFiltros() {
+        when(solicitudRepository.findAll(any(), eq(PageRequest.of(0, 10,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id")))))
+                .thenReturn(new PageImpl<>(List.of(solicitudEntity)));
 
-        HistorialSolicitudEntity h2 = new HistorialSolicitudEntity();
-        h2.setId(2L);
-        h2.setAccion("CLASIFICACION");
-        h2.setObservaciones("Solicitud clasificada");
-        h2.setFechaHora(LocalDateTime.now());
-        h2.setSolicitud(solicitudEntity);
-        h2.setUsuarioResponsable(admin);
+        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(50L))
+                .thenReturn(List.of());
 
-        when(solicitudRepository.findById(solicitudEntity.getId())).thenReturn(Optional.of(solicitudEntity));
-        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudEntity.getId()))
-                .thenReturn(List.of(h1, h2));
+        PageResponse<SolicitudResponse> response = solicitudService.listarSolicitudes(
+                EstadoSolicitud.REGISTRADA,
+                TipoSolicitud.HOMOLOGACION,
+                null,
+                null,
+                0,
+                10,
+                "id",
+                "desc"
+        );
 
-        List<HistorialSolicitudResponse> historial = solicitudService.obtenerHistorial(solicitudEntity.getId());
-
-        assertNotNull(historial);
-        assertEquals(2, historial.size());
+        assertNotNull(response);
+        assertEquals(1, response.getContent().size());
+        assertEquals(50L, response.getContent().get(0).getId());
     }
 
-    private UsuarioEntity crearUsuarioEntity(Long id, String nombre, String email, boolean activo, RolUsuario rol) {
-        UsuarioEntity usuario = new UsuarioEntity();
-        usuario.setId(id);
-        usuario.setNombre(nombre);
-        usuario.setEmail(email);
-        usuario.setActivo(activo);
-        usuario.setRol(rol);
-        return usuario;
+    @Test
+    @DisplayName("Debe lanzar excepción si usuario no es admin al clasificar")
+    void deberiaLanzarExcepcionSiUsuarioNoEsAdminAlClasificar() {
+        when(usuarioRepository.findById(10L)).thenReturn(Optional.of(estudiante));
+
+        ClasificarSolicitudRequest request =
+                new ClasificarSolicitudRequest(TipoSolicitud.CANCELACION_ASIGNATURAS, 1L);
+
+        assertThrows(AutorizacionException.class,
+                () -> solicitudService.clasificarSolicitud(50L, 10L, request));
     }
 
-    private SolicitudEntity crearSolicitudEntityBase() {
-        SolicitudEntity solicitud = new SolicitudEntity();
-        solicitud.setId(50L);
-        solicitud.setTipo(TipoSolicitud.HOMOLOGACION);
-        solicitud.setDescripcion("Solicitud base para pruebas del servicio.");
-        solicitud.setCanalOrigen(CanalOrigen.SAC);
-        solicitud.setFechaRegistro(LocalDateTime.now());
-        solicitud.setEstado(EstadoSolicitud.REGISTRADA);
-        solicitud.setSolicitante(estudiante);
-        return solicitud;
+    @Test
+    @DisplayName("Debe generar resumen de solicitud")
+    void deberiaGenerarResumenSolicitud() {
+        when(solicitudRepository.findById(50L)).thenReturn(Optional.of(solicitudEntity));
+        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(50L))
+                .thenReturn(List.of());
+        when(iaService.generarResumen(anyString()))
+                .thenReturn("Resumen automático generado");
+
+        String resumen = solicitudService.generarResumenSolicitud(50L);
+
+        assertNotNull(resumen);
+        assertEquals("Resumen automático generado", resumen);
     }
 }

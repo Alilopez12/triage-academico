@@ -11,6 +11,7 @@ import co.edu.uniquindio.triage.dto.request.ClasificarSolicitudRequest;
 import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
 import co.edu.uniquindio.triage.dto.request.SugerirClasificacionRequest;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
+import co.edu.uniquindio.triage.dto.response.PageResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.SugerenciaClasificacionResponse;
 import co.edu.uniquindio.triage.service.AsignarPrioridadUseCase;
@@ -22,10 +23,13 @@ import co.edu.uniquindio.triage.service.ConsultarSolicitudUseCase;
 import co.edu.uniquindio.triage.service.RegistrarSolicitudUseCase;
 import co.edu.uniquindio.triage.service.impl.IAService;
 import co.edu.uniquindio.triage.service.impl.SolicitudService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import co.edu.uniquindio.triage.dto.response.PageResponse;
+
 import java.util.List;
 
 @RestController
@@ -41,7 +45,6 @@ public class SolicitudController {
     private final ConsultarSolicitudUseCase consultarSolicitudUseCase;
     private final SolicitudService solicitudService;
     private final IAService iaService;
-
 
     public SolicitudController(RegistrarSolicitudUseCase registrarSolicitudUseCase,
                                ClasificarSolicitudUseCase clasificarSolicitudUseCase,
@@ -86,7 +89,6 @@ public class SolicitudController {
 
         return asignarPrioridadUseCase.ejecutar(id, request, usuarioId);
     }
-
 
     @PatchMapping("/{id}/asignar")
     public SolicitudResponse asignarResponsable(
