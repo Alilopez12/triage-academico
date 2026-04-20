@@ -29,11 +29,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/solicitudes")
+@Tag(name = "solicitud-controller", description = "Operaciones del ciclo de vida de solicitudes académicas")
 public class SolicitudController {
 
     private final RegistrarSolicitudUseCase registrarSolicitudUseCase;
