@@ -1,15 +1,29 @@
 package co.edu.uniquindio.triage.dto.response;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.time.LocalDateTime;
 import java.util.Map;
 
+@Schema(description = "Estructura estándar de errores del sistema")
 public class ErrorResponse {
 
+    @Schema(description = "Fecha y hora del error", example = "2026-04-11T15:10:18")
     private LocalDateTime timestamp;
+
+    @Schema(description = "Código HTTP del error", example = "404")
     private int status;
+
+    @Schema(description = "Tipo de error HTTP", example = "Not Found")
     private String error;
+
+    @Schema(description = "Mensaje descriptivo del error", example = "No existe una solicitud con id 999")
     private String message;
+
+    @Schema(description = "Ruta del endpoint donde ocurrió el error", example = "/api/solicitudes/999")
     private String path;
+
+    @Schema(description = "Detalles adicionales del error (validaciones, etc.)")
     private Map<String, String> details;
 
     public ErrorResponse() {
