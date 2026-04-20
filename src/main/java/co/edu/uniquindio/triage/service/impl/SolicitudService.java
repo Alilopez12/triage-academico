@@ -19,6 +19,7 @@ import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.PageResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
+import co.edu.uniquindio.triage.exception.AutorizacionException;
 import co.edu.uniquindio.triage.exception.RecursoNoEncontradoException;
 import co.edu.uniquindio.triage.exception.ReglaNegocioException;
 import co.edu.uniquindio.triage.mapper.HistorialSolicitudMapper;
@@ -146,7 +147,19 @@ public class SolicitudService implements
     private void validarAdmin(Long usuarioId, String accion) {
         UsuarioEntity usuario = obtenerUsuario(usuarioId);
         if (usuario.getRol() != RolUsuario.ADMIN) {
-            throw new IllegalStateException("No autorizado para " + accion);
+            throw new AutorizacionException("No autorizado para " + accion);
+        }
+    }
+
+    private void validarAdminOResponsable(Long usuarioId, String accion) {
+        UsuarioEntity usuario = obtenerUsuario(usuarioId);
+
+        if (usuario.getRol() != RolUsuario.ADMIN && usuario.getRol() != RolUsuario.RESPONSABLE) {
+            throw new AutorizacionException("No autorizado para " + accion);
+        }
+
+        if (!usuario.isActivo()) {
+            throw new AutorizacionException("El usuario no se encuentra activo para " + accion);
         }
     }
 
@@ -221,7 +234,11 @@ public class SolicitudService implements
         UsuarioEntity solicitanteEntity = obtenerUsuario(request.getSolicitanteId());
 
         if (solicitanteEntity.getRol() != RolUsuario.ESTUDIANTE) {
-            throw new IllegalStateException("Solo los estudiantes pueden registrar solicitudes");
+            throw new AutorizacionException("Solo los estudiantes pueden registrar solicitudes");
+        }
+
+        if (!solicitanteEntity.isActivo()) {
+            throw new AutorizacionException("El solicitante no se encuentra activo");
         }
 
         Usuario solicitanteDomain = UsuarioMapper.toDomain(solicitanteEntity);
@@ -344,12 +361,12 @@ public class SolicitudService implements
         UsuarioEntity responsableEntity = obtenerUsuario(request.getResponsableId());
 
         if (!responsableEntity.isActivo()) {
-            throw new IllegalStateException("El responsable no está activo");
+            throw new ReglaNegocioException("El responsable no está activo");
         }
 
         if (responsableEntity.getRol() != RolUsuario.RESPONSABLE
                 && responsableEntity.getRol() != RolUsuario.ADMIN) {
-            throw new IllegalStateException("El usuario asignado no tiene rol autorizado como responsable");
+            throw new ReglaNegocioException("El usuario asignado no tiene rol autorizado como responsable");
         }
 
         Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
@@ -404,8 +421,18 @@ public class SolicitudService implements
 
     public SolicitudResponse cambiarEstado(Long solicitudId, CambiarEstadoRequest request) {
 
+        validarAdminOResponsable(request.getUsuarioId(), "cambiar el estado de solicitudes");
+
         SolicitudEntity solicitudEntity = obtenerSolicitudEntity(solicitudId);
         UsuarioEntity usuario = obtenerUsuario(request.getUsuarioId());
+
+        if (usuario.getRol() == RolUsuario.RESPONSABLE) {
+            UsuarioEntity responsableAsignado = solicitudEntity.getResponsableAsignado();
+
+            if (responsableAsignado == null || !responsableAsignado.getId().equals(usuario.getId())) {
+                throw new AutorizacionException("Solo el responsable asignado o un administrador pueden cambiar el estado de esta solicitud");
+            }
+        }
 
         Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
 
