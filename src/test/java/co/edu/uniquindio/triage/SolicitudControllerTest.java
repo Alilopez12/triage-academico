@@ -25,6 +25,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
@@ -40,8 +41,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import co.edu.uniquindio.triage.dto.response.PageResponse;
 
 @WebMvcTest(SolicitudController.class)
+@ActiveProfiles("test")
 class SolicitudControllerTest {
 
     @Autowired
@@ -254,21 +257,48 @@ class SolicitudControllerTest {
         response.setId(50L);
         response.setEstado(EstadoSolicitud.REGISTRADA);
 
+        PageResponse<SolicitudResponse> pageResponse = new PageResponse<>();
+        pageResponse.setContent(List.of(response));
+        pageResponse.setPage(0);
+        pageResponse.setSize(10);
+        pageResponse.setTotalElements(1);
+        pageResponse.setTotalPages(1);
+        pageResponse.setFirst(true);
+        pageResponse.setLast(true);
+        pageResponse.setSortBy("id");
+        pageResponse.setDirection("desc");
+
         when(solicitudService.listarSolicitudes(
                 EstadoSolicitud.REGISTRADA,
                 TipoSolicitud.HOMOLOGACION,
                 Prioridad.ALTA,
-                2L
-        )).thenReturn(List.of(response));
+                2L,
+                0,
+                10,
+                "id",
+                "desc"
+        )).thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/solicitudes")
                         .param("estado", "REGISTRADA")
                         .param("tipo", "HOMOLOGACION")
                         .param("prioridad", "ALTA")
-                        .param("responsableId", "2"))
+                        .param("responsableId", "2")
+                        .param("page", "0")
+                        .param("size", "10")
+                        .param("sortBy", "id")
+                        .param("direction", "desc"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").value(50L))
-                .andExpect(jsonPath("$[0].estado").value("REGISTRADA"));
+                .andExpect(jsonPath("$.content[0].id").value(50L))
+                .andExpect(jsonPath("$.content[0].estado").value("REGISTRADA"))
+                .andExpect(jsonPath("$.page").value(0))
+                .andExpect(jsonPath("$.size").value(10))
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.first").value(true))
+                .andExpect(jsonPath("$.last").value(true))
+                .andExpect(jsonPath("$.sortBy").value("id"))
+                .andExpect(jsonPath("$.direction").value("desc"));
     }
 
     @Test

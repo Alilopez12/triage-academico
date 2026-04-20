@@ -17,8 +17,11 @@ import co.edu.uniquindio.triage.dto.request.CerrarSolicitudRequest;
 import co.edu.uniquindio.triage.dto.request.ClasificarSolicitudRequest;
 import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
+import co.edu.uniquindio.triage.dto.response.PageResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
+import co.edu.uniquindio.triage.exception.AutorizacionException;
 import co.edu.uniquindio.triage.exception.RecursoNoEncontradoException;
+import co.edu.uniquindio.triage.exception.ReglaNegocioException;
 import co.edu.uniquindio.triage.mapper.HistorialSolicitudMapper;
 import co.edu.uniquindio.triage.mapper.SolicitudMapper;
 import co.edu.uniquindio.triage.mapper.UsuarioMapper;
@@ -32,6 +35,12 @@ import co.edu.uniquindio.triage.service.CerrarSolicitudUseCase;
 import co.edu.uniquindio.triage.service.ClasificarSolicitudUseCase;
 import co.edu.uniquindio.triage.service.ConsultarSolicitudUseCase;
 import co.edu.uniquindio.triage.service.RegistrarSolicitudUseCase;
+import jakarta.persistence.criteria.JoinType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -97,12 +106,16 @@ public class SolicitudService implements
     }
 
     @Override
-    public List<SolicitudResponse> listar(
+    public PageResponse<SolicitudResponse> listar(
             EstadoSolicitud estado,
             TipoSolicitud tipo,
             Prioridad prioridad,
-            Long responsableId) {
-        return listarSolicitudes(estado, tipo, prioridad, responsableId);
+            Long responsableId,
+            int page,
+            int size,
+            String sortBy,
+            String direction) {
+        return listarSolicitudes(estado, tipo, prioridad, responsableId, page, size, sortBy, direction);
     }
 
     @Override
@@ -134,12 +147,84 @@ public class SolicitudService implements
     private void validarAdmin(Long usuarioId, String accion) {
         UsuarioEntity usuario = obtenerUsuario(usuarioId);
         if (usuario.getRol() != RolUsuario.ADMIN) {
-            throw new IllegalStateException("No autorizado para " + accion);
+            throw new AutorizacionException("No autorizado para " + accion);
+        }
+    }
+
+    private void validarAdminOResponsable(Long usuarioId, String accion) {
+        UsuarioEntity usuario = obtenerUsuario(usuarioId);
+
+        if (usuario.getRol() != RolUsuario.ADMIN && usuario.getRol() != RolUsuario.RESPONSABLE) {
+            throw new AutorizacionException("No autorizado para " + accion);
+        }
+
+        if (!usuario.isActivo()) {
+            throw new AutorizacionException("El usuario no se encuentra activo para " + accion);
         }
     }
 
     private List<HistorialSolicitudEntity> obtenerHistorialEntities(Long solicitudId) {
         return historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(solicitudId);
+    }
+
+    private Specification<SolicitudEntity> construirEspecificacion(
+            EstadoSolicitud estado,
+            TipoSolicitud tipo,
+            Prioridad prioridad,
+            Long responsableId) {
+
+        Specification<SolicitudEntity> specification = Specification.where(null);
+
+        if (estado != null) {
+            specification = specification.and((root, query, cb) ->
+                    cb.equal(root.get("estado"), estado));
+        }
+
+        if (tipo != null) {
+            specification = specification.and((root, query, cb) ->
+                    cb.equal(root.get("tipo"), tipo));
+        }
+
+        if (prioridad != null) {
+            specification = specification.and((root, query, cb) ->
+                    cb.equal(root.get("prioridad"), prioridad));
+        }
+
+        if (responsableId != null) {
+            specification = specification.and((root, query, cb) ->
+                    cb.equal(root.join("responsableAsignado", JoinType.LEFT).get("id"), responsableId));
+        }
+
+        return specification;
+    }
+
+    private void validarPaginacion(int page, int size) {
+        if (page < 0) {
+            throw new ReglaNegocioException("El parámetro page no puede ser negativo.");
+        }
+
+        if (size <= 0) {
+            throw new ReglaNegocioException("El parámetro size debe ser mayor que cero.");
+        }
+
+        if (size > 100) {
+            throw new ReglaNegocioException("El parámetro size no puede ser mayor a 100.");
+        }
+    }
+
+    private Sort construirSort(String sortBy, String direction) {
+        List<String> camposPermitidos = List.of("id", "fechaRegistro", "estado", "tipo", "prioridad");
+
+        if (!camposPermitidos.contains(sortBy)) {
+            throw new ReglaNegocioException("El campo sortBy no es válido.");
+        }
+
+        if (!"asc".equalsIgnoreCase(direction) && !"desc".equalsIgnoreCase(direction)) {
+            throw new ReglaNegocioException("La dirección de ordenamiento debe ser 'asc' o 'desc'.");
+        }
+
+        Sort.Direction sortDirection = Sort.Direction.fromString(direction);
+        return Sort.by(sortDirection, sortBy);
     }
 
     // ===================== LÓGICA DE NEGOCIO =====================
@@ -149,7 +234,11 @@ public class SolicitudService implements
         UsuarioEntity solicitanteEntity = obtenerUsuario(request.getSolicitanteId());
 
         if (solicitanteEntity.getRol() != RolUsuario.ESTUDIANTE) {
-            throw new IllegalStateException("Solo los estudiantes pueden registrar solicitudes");
+            throw new AutorizacionException("Solo los estudiantes pueden registrar solicitudes");
+        }
+
+        if (!solicitanteEntity.isActivo()) {
+            throw new AutorizacionException("El solicitante no se encuentra activo");
         }
 
         Usuario solicitanteDomain = UsuarioMapper.toDomain(solicitanteEntity);
@@ -272,12 +361,12 @@ public class SolicitudService implements
         UsuarioEntity responsableEntity = obtenerUsuario(request.getResponsableId());
 
         if (!responsableEntity.isActivo()) {
-            throw new IllegalStateException("El responsable no está activo");
+            throw new ReglaNegocioException("El responsable no está activo");
         }
 
         if (responsableEntity.getRol() != RolUsuario.RESPONSABLE
                 && responsableEntity.getRol() != RolUsuario.ADMIN) {
-            throw new IllegalStateException("El usuario asignado no tiene rol autorizado como responsable");
+            throw new ReglaNegocioException("El usuario asignado no tiene rol autorizado como responsable");
         }
 
         Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
@@ -332,8 +421,18 @@ public class SolicitudService implements
 
     public SolicitudResponse cambiarEstado(Long solicitudId, CambiarEstadoRequest request) {
 
+        validarAdminOResponsable(request.getUsuarioId(), "cambiar el estado de solicitudes");
+
         SolicitudEntity solicitudEntity = obtenerSolicitudEntity(solicitudId);
         UsuarioEntity usuario = obtenerUsuario(request.getUsuarioId());
+
+        if (usuario.getRol() == RolUsuario.RESPONSABLE) {
+            UsuarioEntity responsableAsignado = solicitudEntity.getResponsableAsignado();
+
+            if (responsableAsignado == null || !responsableAsignado.getId().equals(usuario.getId())) {
+                throw new AutorizacionException("Solo el responsable asignado o un administrador pueden cambiar el estado de esta solicitud");
+            }
+        }
 
         Solicitud solicitudDomain = SolicitudMapper.toDomain(solicitudEntity);
 
@@ -455,39 +554,38 @@ public class SolicitudService implements
         return iaService.generarResumen(contenido.toString());
     }
 
-    public List<SolicitudResponse> listarSolicitudes(
+    public PageResponse<SolicitudResponse> listarSolicitudes(
             EstadoSolicitud estado,
             TipoSolicitud tipo,
             Prioridad prioridad,
-            Long responsableId) {
+            Long responsableId,
+            int page,
+            int size,
+            String sortBy,
+            String direction) {
 
-        List<SolicitudEntity> solicitudes;
+        validarPaginacion(page, size);
+        Sort sort = construirSort(sortBy, direction);
+        Pageable pageable = PageRequest.of(page, size, sort);
 
-        if (estado == null && tipo == null && prioridad == null && responsableId == null) {
-            solicitudes = solicitudRepository.findAll();
-        } else if (estado != null && tipo != null) {
-            solicitudes = solicitudRepository.findByEstadoAndTipo(estado, tipo);
-        } else if (estado != null) {
-            solicitudes = solicitudRepository.findByEstado(estado);
-        } else if (tipo != null) {
-            solicitudes = solicitudRepository.findByTipo(tipo);
-        } else if (prioridad != null) {
-            solicitudes = solicitudRepository.findByPrioridad(prioridad);
-        } else if (responsableId != null) {
-            solicitudes = solicitudRepository.findByResponsableAsignadoId(responsableId);
-        } else {
-            solicitudes = solicitudRepository.findAll();
-        }
+        Specification<SolicitudEntity> specification = construirEspecificacion(
+                estado,
+                tipo,
+                prioridad,
+                responsableId
+        );
 
-        List<SolicitudResponse> response = new ArrayList<>();
+        Page<SolicitudEntity> solicitudesPage = solicitudRepository.findAll(specification, pageable);
 
-        for (SolicitudEntity entity : solicitudes) {
+        List<SolicitudResponse> content = new ArrayList<>();
+
+        for (SolicitudEntity entity : solicitudesPage.getContent()) {
             List<HistorialSolicitudEntity> historialEntities =
                     historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(entity.getId());
 
             Solicitud solicitudDomain = SolicitudMapper.toDomain(entity);
 
-            response.add(
+            content.add(
                     SolicitudMapper.toResponse(
                             solicitudDomain,
                             SolicitudMapper.toHistorialDomainList(historialEntities)
@@ -495,7 +593,17 @@ public class SolicitudService implements
             );
         }
 
-        return response;
+        return new PageResponse<>(
+                content,
+                solicitudesPage.getNumber(),
+                solicitudesPage.getSize(),
+                solicitudesPage.getTotalElements(),
+                solicitudesPage.getTotalPages(),
+                solicitudesPage.isFirst(),
+                solicitudesPage.isLast(),
+                sortBy,
+                direction
+        );
     }
 
     public SolicitudResponse obtenerSolicitudPorId(Long id) {
