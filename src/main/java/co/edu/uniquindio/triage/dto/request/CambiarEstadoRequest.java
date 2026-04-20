@@ -13,13 +13,21 @@ public class CambiarEstadoRequest {
     @NotNull(message = "El usuarioId es obligatorio.")
     private Long usuarioId;
 
+    // 🔥 NUEVO CAMPO PARA CONCURRENCIA
+    @NotNull(message = "La versión es obligatoria.")
+    private Long version;
+
     public CambiarEstadoRequest() {
     }
 
-    public CambiarEstadoRequest(EstadoSolicitud nuevoEstado, String observacion, Long usuarioId) {
+    public CambiarEstadoRequest(EstadoSolicitud nuevoEstado,
+                                String observacion,
+                                Long usuarioId,
+                                Long version) {
         this.nuevoEstado = nuevoEstado;
         this.observacion = observacion;
         this.usuarioId = usuarioId;
+        this.version = version;
     }
 
     public EstadoSolicitud getNuevoEstado() {
@@ -44,5 +52,14 @@ public class CambiarEstadoRequest {
 
     public void setUsuarioId(Long usuarioId) {
         this.usuarioId = usuarioId;
+    }
+
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }

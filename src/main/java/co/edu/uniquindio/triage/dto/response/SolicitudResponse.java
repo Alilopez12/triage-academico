@@ -5,6 +5,8 @@ import co.edu.uniquindio.triage.domain.enums.EstadoSolicitud;
 import co.edu.uniquindio.triage.domain.enums.ImpactoAcademico;
 import co.edu.uniquindio.triage.domain.enums.Prioridad;
 import co.edu.uniquindio.triage.domain.enums.TipoSolicitud;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -12,22 +14,45 @@ import java.util.List;
 
 public class SolicitudResponse {
 
+    @Getter
+    @Setter
     private Long id;
+    @Getter
+    @Setter
     private TipoSolicitud tipo;
+    @Setter
     private String descripcion;
+    @Setter
     private CanalOrigen canalOrigen;
+    @Setter
     private LocalDateTime fechaRegistro;
+    @Getter
+    @Setter
     private Prioridad prioridad;
+    @Getter
+    @Setter
     private String justificacionPrioridad;
+    @Getter
+    @Setter
     private EstadoSolicitud estado;
+    @Setter
     private ImpactoAcademico impactoAcademico;
+    @Setter
     private Long solicitanteId;
+    @Setter
     private String nombreSolicitante;
+    @Setter
     private Long responsableAsignadoId;
+    @Setter
     private String nombreResponsableAsignado;
+    @Setter
     private String observacionCierre;
+    @Getter
+    @Setter
     private List<HistorialSolicitudResponse> historial;
+    @Setter
     private LocalDate fechaLimite;
+    private Long version;
 
     public SolicitudResponse() {
     }
@@ -66,14 +91,6 @@ public class SolicitudResponse {
         this.fechaLimite = fechaLimite;
     }
 
-    public Long getId() {
-        return id;
-    }
-
-    public TipoSolicitud getTipo() {
-        return tipo;
-    }
-
     public String getDescripcion() {
         return descripcion;
     }
@@ -84,18 +101,6 @@ public class SolicitudResponse {
 
     public LocalDateTime getFechaRegistro() {
         return fechaRegistro;
-    }
-
-    public Prioridad getPrioridad() {
-        return prioridad;
-    }
-
-    public String getJustificacionPrioridad() {
-        return justificacionPrioridad;
-    }
-
-    public EstadoSolicitud getEstado() {
-        return estado;
     }
 
     public ImpactoAcademico getImpactoAcademico() {
@@ -122,74 +127,10 @@ public class SolicitudResponse {
         return observacionCierre;
     }
 
-    public List<HistorialSolicitudResponse> getHistorial() {
-        return historial;
-    }
     public LocalDate getFechaLimite() {
         return fechaLimite;
     }
 
-    public void setFechaLimite(LocalDate fechaLimite) {
-        this.fechaLimite = fechaLimite;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public void setTipo(TipoSolicitud tipo) {
-        this.tipo = tipo;
-    }
-
-    public void setDescripcion(String descripcion) {
-        this.descripcion = descripcion;
-    }
-
-    public void setCanalOrigen(CanalOrigen canalOrigen) {
-        this.canalOrigen = canalOrigen;
-    }
-
-    public void setFechaRegistro(LocalDateTime fechaRegistro) {
-        this.fechaRegistro = fechaRegistro;
-    }
-
-    public void setPrioridad(Prioridad prioridad) {
-        this.prioridad = prioridad;
-    }
-
-    public void setJustificacionPrioridad(String justificacionPrioridad) {
-        this.justificacionPrioridad = justificacionPrioridad;
-    }
-
-    public void setEstado(EstadoSolicitud estado) {
-        this.estado = estado;
-    }
-
-    public void setImpactoAcademico(ImpactoAcademico impactoAcademico) {
-        this.impactoAcademico = impactoAcademico;
-    }
-
-    public void setSolicitanteId(Long solicitanteId) {
-        this.solicitanteId = solicitanteId;
-    }
-
-    public void setNombreSolicitante(String nombreSolicitante) {
-        this.nombreSolicitante = nombreSolicitante;
-    }
-
-    public void setResponsableAsignadoId(Long responsableAsignadoId) {
-        this.responsableAsignadoId = responsableAsignadoId;
-    }
-
-    public void setNombreResponsableAsignado(String nombreResponsableAsignado) {
-        this.nombreResponsableAsignado = nombreResponsableAsignado;
-    }
-
-    public void setObservacionCierre(String observacionCierre) {
-        this.observacionCierre = observacionCierre;
-    }
-
-    public void setHistorial(List<HistorialSolicitudResponse> historial) {
-        this.historial = historial;
+    public void setVersion(Long version) {
     }
 }

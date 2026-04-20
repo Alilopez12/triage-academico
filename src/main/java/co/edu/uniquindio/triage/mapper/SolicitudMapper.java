@@ -22,6 +22,7 @@ public class SolicitudMapper {
 
         Solicitud solicitud = new Solicitud();
         solicitud.setId(entity.getId());
+        solicitud.setVersion(entity.getVersion());
         solicitud.setTipo(entity.getTipo());
         solicitud.setDescripcion(entity.getDescripcion());
         solicitud.setCanalOrigen(entity.getCanalOrigen());
@@ -45,6 +46,7 @@ public class SolicitudMapper {
 
         SolicitudEntity entity = new SolicitudEntity();
         entity.setId(domain.getId());
+        entity.setVersion(domain.getVersion());
         entity.setTipo(domain.getTipo());
         entity.setDescripcion(domain.getDescripcion());
         entity.setCanalOrigen(domain.getCanalOrigen());
@@ -68,6 +70,7 @@ public class SolicitudMapper {
 
         SolicitudResponse response = new SolicitudResponse();
         response.setId(domain.getId());
+        response.setVersion(domain.getVersion());
         response.setTipo(domain.getTipo());
         response.setDescripcion(domain.getDescripcion());
         response.setCanalOrigen(domain.getCanalOrigen());
