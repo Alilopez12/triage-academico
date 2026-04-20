@@ -15,17 +15,22 @@ import java.time.temporal.ChronoUnit;
 public class Solicitud {
 
     private Long id;
+    private Long version;
+
     private TipoSolicitud tipo;
     private String descripcion;
     private CanalOrigen canalOrigen;
     private LocalDateTime fechaRegistro;
+
     private Prioridad prioridad;
     private String justificacionPrioridad;
     private EstadoSolicitud estado;
     private ImpactoAcademico impactoAcademico;
     private LocalDate fechaLimite;
+
     private Usuario solicitante;
     private Usuario responsableAsignado;
+
     private String observacionCierre;
 
     public Solicitud() {
@@ -167,6 +172,20 @@ public class Solicitud {
         this.estado = EstadoSolicitud.CLASIFICADA;
     }
 
+    public void clasificar() {
+        if (this.estado != EstadoSolicitud.REGISTRADA) {
+            throw new TransicionInvalidaException(
+                    "Solo se puede clasificar una solicitud en estado REGISTRADA."
+            );
+        }
+
+        if (this.tipo == null) {
+            throw new ReglaNegocioException("El tipo de solicitud es obligatorio.");
+        }
+
+        this.estado = EstadoSolicitud.CLASIFICADA;
+    }
+
     public void cambiarEstado(EstadoSolicitud nuevoEstado) {
         if (this.estado == EstadoSolicitud.CERRADA) {
             throw new ReglaNegocioException("No se puede modificar una solicitud cerrada.");
@@ -221,7 +240,6 @@ public class Solicitud {
 
         int puntaje = 0;
 
-        // 1. Puntaje por tipo de solicitud
         switch (tipo) {
             case CANCELACION_ASIGNATURAS -> puntaje += 3;
             case SOLICITUD_CUPOS -> puntaje += 3;
@@ -230,14 +248,12 @@ public class Solicitud {
             case CONSULTA_ACADEMICA -> puntaje += 1;
         }
 
-        // 2. Puntaje por impacto académico
         switch (impactoAcademico) {
             case ALTO -> puntaje += 3;
             case MEDIO -> puntaje += 2;
             case BAJO -> puntaje += 1;
         }
 
-        // 3. Puntaje por cercanía de fecha límite
         if (diasRestantes <= 1) {
             puntaje += 4;
         } else if (diasRestantes <= 3) {
@@ -248,7 +264,6 @@ public class Solicitud {
             puntaje += 1;
         }
 
-        // 4. Conversión del puntaje a prioridad
         if (puntaje >= 9) {
             return Prioridad.CRITICA;
         }
@@ -271,6 +286,10 @@ public class Solicitud {
 
     public Long getId() {
         return id;
+    }
+
+    public Long getVersion() {
+        return version;
     }
 
     public TipoSolicitud getTipo() {
@@ -325,6 +344,10 @@ public class Solicitud {
         this.id = id;
     }
 
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+
     public void setTipo(TipoSolicitud tipo) {
         this.tipo = tipo;
     }
@@ -371,20 +394,5 @@ public class Solicitud {
 
     public void setObservacionCierre(String observacionCierre) {
         this.observacionCierre = observacionCierre;
-    }
-
-    public void clasificar() {
-
-        if (this.estado != EstadoSolicitud.REGISTRADA) {
-            throw new TransicionInvalidaException(
-                    "Solo se puede clasificar una solicitud en estado REGISTRADA."
-            );
-        }
-
-        if (this.tipo == null) {
-            throw new ReglaNegocioException("El tipo de solicitud es obligatorio.");
-        }
-
-        this.estado = EstadoSolicitud.CLASIFICADA;
     }
 }

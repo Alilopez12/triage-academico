@@ -13,12 +13,18 @@ public class AsignarPrioridadRequest {
     @NotNull(message = "La fecha límite es obligatoria.")
     private LocalDate fechaLimite;
 
+    @NotNull(message = "La versión es obligatoria.")
+    private Long version;
+
     public AsignarPrioridadRequest() {
     }
 
-    public AsignarPrioridadRequest(ImpactoAcademico impactoAcademico, LocalDate fechaLimite) {
+    public AsignarPrioridadRequest(ImpactoAcademico impactoAcademico,
+                                   LocalDate fechaLimite,
+                                   Long version) {
         this.impactoAcademico = impactoAcademico;
         this.fechaLimite = fechaLimite;
+        this.version = version;
     }
 
     public ImpactoAcademico getImpactoAcademico() {
@@ -35,5 +41,13 @@ public class AsignarPrioridadRequest {
 
     public void setFechaLimite(LocalDate fechaLimite) {
         this.fechaLimite = fechaLimite;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 }
