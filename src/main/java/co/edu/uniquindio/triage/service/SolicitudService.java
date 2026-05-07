@@ -1,4 +1,4 @@
-package co.edu.uniquindio.triage.service.impl;
+package co.edu.uniquindio.triage.service;
 
 import co.edu.uniquindio.triage.domain.entity.HistorialSolicitudEntity;
 import co.edu.uniquindio.triage.domain.entity.SolicitudEntity;
@@ -29,13 +29,6 @@ import co.edu.uniquindio.triage.mapper.UsuarioMapper;
 import co.edu.uniquindio.triage.repository.HistorialSolicitudRepository;
 import co.edu.uniquindio.triage.repository.SolicitudRepository;
 import co.edu.uniquindio.triage.repository.UsuarioRepository;
-import co.edu.uniquindio.triage.service.AsignarPrioridadUseCase;
-import co.edu.uniquindio.triage.service.AsignarResponsableUseCase;
-import co.edu.uniquindio.triage.service.CambiarEstadoSolicitudUseCase;
-import co.edu.uniquindio.triage.service.CerrarSolicitudUseCase;
-import co.edu.uniquindio.triage.service.ClasificarSolicitudUseCase;
-import co.edu.uniquindio.triage.service.ConsultarSolicitudUseCase;
-import co.edu.uniquindio.triage.service.RegistrarSolicitudUseCase;
 import jakarta.persistence.criteria.JoinType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -48,16 +41,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 
-@Service
 @Transactional
-public class SolicitudService implements
-        ConsultarSolicitudUseCase,
-        RegistrarSolicitudUseCase,
-        ClasificarSolicitudUseCase,
-        AsignarPrioridadUseCase,
-        AsignarResponsableUseCase,
-        CambiarEstadoSolicitudUseCase,
-        CerrarSolicitudUseCase {
+@Service
+public class SolicitudService{
 
     private final SolicitudRepository solicitudRepository;
     private final UsuarioRepository usuarioRepository;
@@ -74,58 +60,6 @@ public class SolicitudService implements
         this.iaService = iaService;
     }
 
-    @Override
-    public SolicitudResponse ejecutar(SolicitudCreateRequest request) {
-        return registrarSolicitud(request);
-    }
-
-    @Override
-    public SolicitudResponse ejecutar(Long solicitudId, Long usuarioId, ClasificarSolicitudRequest request) {
-        return clasificarSolicitud(solicitudId, usuarioId, request);
-    }
-
-    @Override
-    public SolicitudResponse ejecutar(Long solicitudId, AsignarPrioridadRequest request, Long usuarioId) {
-        return asignarPrioridad(solicitudId, request, usuarioId);
-    }
-
-    @Override
-    public SolicitudResponse ejecutar(Long solicitudId, AsignarResponsableRequest request, Long usuarioId) {
-        return asignarResponsable(solicitudId, request, usuarioId);
-    }
-
-    @Override
-    public SolicitudResponse ejecutar(Long solicitudId, CambiarEstadoRequest request) {
-        return cambiarEstado(solicitudId, request);
-    }
-
-    @Override
-    public SolicitudResponse ejecutar(Long solicitudId, CerrarSolicitudRequest request, Long usuarioId) {
-        return cerrarSolicitud(solicitudId, request, usuarioId);
-    }
-
-    @Override
-    public PageResponse<SolicitudResponse> listar(
-            EstadoSolicitud estado,
-            TipoSolicitud tipo,
-            Prioridad prioridad,
-            Long responsableId,
-            int page,
-            int size,
-            String sortBy,
-            String direction) {
-        return listarSolicitudes(estado, tipo, prioridad, responsableId, page, size, sortBy, direction);
-    }
-
-    @Override
-    public SolicitudResponse obtenerPorId(Long id) {
-        return obtenerSolicitudPorId(id);
-    }
-
-    @Override
-    public List<HistorialSolicitudResponse> obtenerHistorial(Long id) {
-        return obtenerHistorialInterno(id);
-    }
 
     private UsuarioEntity obtenerUsuario(Long usuarioId) {
         return usuarioRepository.findById(usuarioId)

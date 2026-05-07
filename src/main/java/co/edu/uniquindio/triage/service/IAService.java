@@ -1,15 +1,24 @@
-package co.edu.uniquindio.triage.service.impl;
+package co.edu.uniquindio.triage.service;
 
+import co.edu.uniquindio.triage.domain.entity.SolicitudEntity;
+import co.edu.uniquindio.triage.exception.RecursoNoEncontradoException;
 import org.springframework.stereotype.Service;
 import co.edu.uniquindio.triage.domain.enums.Prioridad;
 import co.edu.uniquindio.triage.domain.enums.TipoSolicitud;
 import co.edu.uniquindio.triage.dto.response.SugerenciaClasificacionResponse;
+import co.edu.uniquindio.triage.repository.SolicitudRepository;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class IAService {
+public class IAService{
+
+    private final SolicitudRepository solicitudRepository;
+
+    public IAService(SolicitudRepository solicitudRepository) {
+        this.solicitudRepository = solicitudRepository;
+    }
 
     public String generarResumen(String texto) {
 
@@ -76,6 +85,7 @@ public class IAService {
         resumen.append(generarConclusion(estado, prioridad));
 
         return resumen.toString();
+
     }
 
     public SugerenciaClasificacionResponse sugerirClasificacion(String descripcion) {
@@ -127,6 +137,51 @@ public class IAService {
 
         return new SugerenciaClasificacionResponse(tipoSugerido, prioridadSugerida, justificacion);
     }
+
+    public String generarResumenSolicitud(Long solicitudId) {
+
+        SolicitudEntity solicitud = solicitudRepository.findById(solicitudId)
+                .orElseThrow(() -> new RecursoNoEncontradoException(
+                        "No se encontró la solicitud con id: " + solicitudId
+                ));
+
+        String texto = construirTextoSolicitud(solicitud);
+
+        return generarResumen(texto);
+    }
+
+    private String construirTextoSolicitud(SolicitudEntity solicitud) {
+
+        StringBuilder texto = new StringBuilder();
+
+        texto.append("Tipo: ")
+                .append(solicitud.getTipo())
+                .append("\n");
+
+        texto.append("Estado: ")
+                .append(solicitud.getEstado())
+                .append("\n");
+
+        texto.append("Prioridad: ")
+                .append(solicitud.getPrioridad())
+                .append("\n");
+
+        texto.append("Canal: ")
+                .append(solicitud.getCanalOrigen())
+                .append("\n");
+
+        texto.append("Fecha de registro: ")
+                .append(solicitud.getFechaRegistro())
+                .append("\n");
+
+        texto.append("Descripción: ")
+                .append(solicitud.getDescripcion())
+                .append("\n");
+
+        return texto.toString();
+    }
+
+
 
     private String limpiarTexto(String texto) {
         return texto

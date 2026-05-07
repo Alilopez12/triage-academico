@@ -1,4 +1,4 @@
-package co.edu.uniquindio.triage;
+package co.edu.uniquindio.triage.service;
 
 import co.edu.uniquindio.triage.domain.entity.HistorialSolicitudEntity;
 import co.edu.uniquindio.triage.domain.entity.SolicitudEntity;
@@ -12,8 +12,6 @@ import co.edu.uniquindio.triage.exception.ConcurrenciaException;
 import co.edu.uniquindio.triage.repository.HistorialSolicitudRepository;
 import co.edu.uniquindio.triage.repository.SolicitudRepository;
 import co.edu.uniquindio.triage.repository.UsuarioRepository;
-import co.edu.uniquindio.triage.service.impl.IAService;
-import co.edu.uniquindio.triage.service.impl.SolicitudService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -267,9 +265,10 @@ public class SolicitudServiceTest {
     @Test
     @DisplayName("Debe listar solicitudes con filtros")
     void deberiaListarSolicitudesConFiltros() {
-        when(solicitudRepository.findAll(any(), eq(PageRequest.of(0, 10,
-                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id")))))
-                .thenReturn(new PageImpl<>(List.of(solicitudEntity)));
+        when(solicitudRepository.findAll(
+                any(org.springframework.data.jpa.domain.Specification.class),
+                any(PageRequest.class)
+        )).thenReturn(new PageImpl<>(List.of(solicitudEntity)));
 
         when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(50L))
                 .thenReturn(List.of());

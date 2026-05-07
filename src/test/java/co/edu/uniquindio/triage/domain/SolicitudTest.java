@@ -1,4 +1,4 @@
-package co.edu.uniquindio.triage;
+package co.edu.uniquindio.triage.domain;
 
 import co.edu.uniquindio.triage.domain.enums.CanalOrigen;
 import co.edu.uniquindio.triage.domain.enums.EstadoSolicitud;
@@ -14,7 +14,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 

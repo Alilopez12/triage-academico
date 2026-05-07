@@ -1,15 +1,13 @@
-package co.edu.uniquindio.triage;
+package co.edu.uniquindio.triage.controller;
 
-import co.edu.uniquindio.triage.controller.SolicitudController;
 import co.edu.uniquindio.triage.domain.enums.*;
 import co.edu.uniquindio.triage.dto.request.*;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.PageResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.SugerenciaClasificacionResponse;
-import co.edu.uniquindio.triage.service.*;
-import co.edu.uniquindio.triage.service.impl.IAService;
-import co.edu.uniquindio.triage.service.impl.SolicitudService;
+import co.edu.uniquindio.triage.service.IAService;
+import co.edu.uniquindio.triage.service.SolicitudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -43,31 +41,8 @@ public class SolicitudControllerTest {
     private ObjectMapper objectMapper;
 
     @MockBean
-    private RegistrarSolicitudUseCase registrarSolicitudUseCase;
-
-    @MockBean
-    private ClasificarSolicitudUseCase clasificarSolicitudUseCase;
-
-    @MockBean
-    private AsignarPrioridadUseCase asignarPrioridadUseCase;
-
-    @MockBean
-    private AsignarResponsableUseCase asignarResponsableUseCase;
-
-    @MockBean
-    private CambiarEstadoSolicitudUseCase cambiarEstadoSolicitudUseCase;
-
-    @MockBean
-    private CerrarSolicitudUseCase cerrarSolicitudUseCase;
-
-    @MockBean
-    private ConsultarSolicitudUseCase consultarSolicitudUseCase;
-
-    @MockBean
     private SolicitudService solicitudService;
 
-    @MockBean
-    private IAService iaService;
 
     private SolicitudResponse crearSolicitudResponseBase() {
         SolicitudResponse response = new SolicitudResponse();
@@ -99,7 +74,7 @@ public class SolicitudControllerTest {
         response.setTipo(TipoSolicitud.HOMOLOGACION);
         response.setEstado(EstadoSolicitud.REGISTRADA);
 
-        when(registrarSolicitudUseCase.ejecutar(any(SolicitudCreateRequest.class)))
+        when(solicitudService.registrarSolicitud(any(SolicitudCreateRequest.class)))
                 .thenReturn(response);
 
         mockMvc.perform(post("/api/solicitudes")
@@ -138,7 +113,7 @@ public class SolicitudControllerTest {
         response.setTipo(TipoSolicitud.CANCELACION_ASIGNATURAS);
         response.setEstado(EstadoSolicitud.CLASIFICADA);
 
-        when(clasificarSolicitudUseCase.ejecutar(eq(50L), eq(1L), any(ClasificarSolicitudRequest.class)))
+        when(solicitudService.clasificarSolicitud(eq(50L), eq(1L), any(ClasificarSolicitudRequest.class)))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/solicitudes/50/clasificar")
@@ -176,7 +151,7 @@ public class SolicitudControllerTest {
         response.setPrioridad(Prioridad.CRITICA);
         response.setEstado(EstadoSolicitud.CLASIFICADA);
 
-        when(asignarPrioridadUseCase.ejecutar(eq(50L), any(AsignarPrioridadRequest.class), eq(1L)))
+        when(solicitudService.asignarPrioridad(eq(50L), any(AsignarPrioridadRequest.class), eq(1L)))
                 .thenReturn(response);
 
         mockMvc.perform(put("/api/solicitudes/50/prioridad")
@@ -197,7 +172,7 @@ public class SolicitudControllerTest {
         SolicitudResponse response = crearSolicitudResponseBase();
         response.setResponsableAsignadoId(2L);
 
-        when(asignarResponsableUseCase.ejecutar(eq(50L), any(AsignarResponsableRequest.class), eq(1L)))
+        when(solicitudService.asignarResponsable(eq(50L), any(AsignarResponsableRequest.class), eq(1L)))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/solicitudes/50/asignar")
@@ -217,7 +192,8 @@ public class SolicitudControllerTest {
         item.setUsuarioResponsableId(10L);
         item.setFechaHora(LocalDateTime.now());
 
-        when(consultarSolicitudUseCase.obtenerHistorial(50L)).thenReturn(List.of(item));
+        when(solicitudService.obtenerHistorial(50L))
+                .thenReturn(List.of(item));
 
         mockMvc.perform(get("/api/solicitudes/50/historial"))
                 .andExpect(status().isOk())
@@ -236,7 +212,7 @@ public class SolicitudControllerTest {
         SolicitudResponse response = crearSolicitudResponseBase();
         response.setEstado(EstadoSolicitud.EN_ATENCION);
 
-        when(cambiarEstadoSolicitudUseCase.ejecutar(eq(50L), any(CambiarEstadoRequest.class)))
+        when(solicitudService.cambiarEstado(eq(50L), any(CambiarEstadoRequest.class)))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/solicitudes/50/estado")
@@ -257,7 +233,7 @@ public class SolicitudControllerTest {
         response.setEstado(EstadoSolicitud.CERRADA);
         response.setObservacionCierre("La solicitud fue atendida y cerrada correctamente.");
 
-        when(cerrarSolicitudUseCase.ejecutar(eq(50L), any(CerrarSolicitudRequest.class), eq(1L)))
+        when(solicitudService.cerrarSolicitud(eq(50L), any(CerrarSolicitudRequest.class), eq(1L)))
                 .thenReturn(response);
 
         mockMvc.perform(put("/api/solicitudes/50/cerrar")
@@ -299,7 +275,7 @@ public class SolicitudControllerTest {
         pageResponse.setSortBy("id");
         pageResponse.setDirection("desc");
 
-        when(consultarSolicitudUseCase.listar(
+        when(solicitudService.listar(
                 EstadoSolicitud.REGISTRADA,
                 TipoSolicitud.HOMOLOGACION,
                 Prioridad.ALTA,
@@ -338,7 +314,8 @@ public class SolicitudControllerTest {
         SolicitudResponse response = crearSolicitudResponseBase();
         response.setId(50L);
 
-        when(consultarSolicitudUseCase.obtenerPorId(50L)).thenReturn(response);
+        when(solicitudService.obtenerPorId(50L))
+                .thenReturn(response);
 
         mockMvc.perform(get("/api/solicitudes/50"))
                 .andExpect(status().isOk())
