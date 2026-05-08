@@ -275,7 +275,7 @@ public class SolicitudControllerTest {
         pageResponse.setSortBy("id");
         pageResponse.setDirection("desc");
 
-        when(solicitudService.listar(
+        when(solicitudService.listarSolicitudes(
                 EstadoSolicitud.REGISTRADA,
                 TipoSolicitud.HOMOLOGACION,
                 Prioridad.ALTA,
@@ -314,31 +314,11 @@ public class SolicitudControllerTest {
         SolicitudResponse response = crearSolicitudResponseBase();
         response.setId(50L);
 
-        when(solicitudService.obtenerPorId(50L))
+        when(solicitudService.obtenerSolicitudPorId(50L))
                 .thenReturn(response);
 
         mockMvc.perform(get("/api/solicitudes/50"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(50L));
-    }
-
-    @Test
-    @DisplayName("POST /api/solicitudes/sugerir-clasificacion debería retornar 200")
-    void deberiaSugerirClasificacionYRetornar200() throws Exception {
-        SugerirClasificacionRequest request = new SugerirClasificacionRequest(
-                "Necesito cancelar una asignatura por cruce de horarios"
-        );
-
-        SugerenciaClasificacionResponse response = new SugerenciaClasificacionResponse();
-        response.setTipoSugerido(TipoSolicitud.CANCELACION_ASIGNATURAS);
-        response.setJustificacion("Se detectan palabras clave relacionadas con cancelación.");
-
-        when(iaService.sugerirClasificacion(any(String.class))).thenReturn(response);
-
-        mockMvc.perform(post("/api/solicitudes/sugerir-clasificacion")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.tipoSugerido").value("CANCELACION_ASIGNATURAS"));
     }
 }

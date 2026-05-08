@@ -348,7 +348,7 @@ public class SolicitudService{
         );
     }
 
-    public List<HistorialSolicitudResponse> obtenerHistorialInterno(Long solicitudId) {
+    public List<HistorialSolicitudResponse> obtenerHistorial(Long solicitudId) {
         if (!solicitudRepository.existsById(solicitudId)) {
             throw new RecursoNoEncontradoException(
                     "No existe una solicitud con id " + solicitudId

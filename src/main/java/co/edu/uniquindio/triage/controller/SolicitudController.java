@@ -108,7 +108,7 @@ public class SolicitudController {
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "desc") String direction) {
 
-        return solicitudService.listar(
+        return solicitudService.listarSolicitudes(
                 estado,
                 tipo,
                 prioridad,
@@ -123,6 +123,6 @@ public class SolicitudController {
 
     @GetMapping("/{id}")
     public SolicitudResponse obtenerSolicitudPorId(@PathVariable Long id) {
-        return solicitudService.obtenerPorId(id);
+        return solicitudService.obtenerSolicitudPorId(id);
     }
 }
