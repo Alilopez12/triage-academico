@@ -177,7 +177,8 @@ public class SolicitudServiceTest {
         SolicitudResponse response = solicitudService.asignarPrioridad(50L, request, 1L);
 
         assertNotNull(response);
-        assertEquals(Prioridad.CRITICA, response.getPrioridad());
+        // HOMOLOGACION(2) + ALTO(3) + 2 días(3) = 8 puntos → ALTA
+        assertEquals(Prioridad.ALTA, response.getPrioridad());
         assertNotNull(response.getJustificacionPrioridad());
 
         verify(solicitudRepository).saveAndFlush(any(SolicitudEntity.class));

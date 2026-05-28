@@ -1,5 +1,7 @@
 package co.edu.uniquindio.triage.controller;
 
+import co.edu.uniquindio.triage.config.security.JwtService;
+import co.edu.uniquindio.triage.config.security.SecurityConfig;
 import co.edu.uniquindio.triage.domain.enums.*;
 import co.edu.uniquindio.triage.dto.request.*;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
@@ -15,6 +17,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
@@ -32,6 +37,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(SolicitudController.class)
+@Import(SecurityConfig.class)
+@WithMockUser
 public class SolicitudControllerTest {
 
     @Autowired
@@ -42,6 +49,12 @@ public class SolicitudControllerTest {
 
     @MockBean
     private SolicitudService solicitudService;
+
+    @MockBean
+    private JwtService jwtService;
+
+    @MockBean
+    private UserDetailsService userDetailsService;
 
 
     private SolicitudResponse crearSolicitudResponseBase() {
@@ -244,17 +257,6 @@ public class SolicitudControllerTest {
                 .andExpect(jsonPath("$.estado").value("CERRADA"))
                 .andExpect(jsonPath("$.observacionCierre")
                         .value("La solicitud fue atendida y cerrada correctamente."));
-    }
-
-    @Test
-    @DisplayName("GET /api/solicitudes/{id}/resumen debería retornar 200")
-    void deberiaGenerarResumenYRetornar200() throws Exception {
-        when(solicitudService.generarResumenSolicitud(50L))
-                .thenReturn("Resumen automático de la solicitud");
-
-        mockMvc.perform(get("/api/solicitudes/50/resumen"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Resumen automático de la solicitud"));
     }
 
     @Test

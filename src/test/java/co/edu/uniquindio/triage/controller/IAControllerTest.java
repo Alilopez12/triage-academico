@@ -1,5 +1,7 @@
 package co.edu.uniquindio.triage.controller;
 
+import co.edu.uniquindio.triage.config.security.JwtService;
+import co.edu.uniquindio.triage.config.security.SecurityConfig;
 import co.edu.uniquindio.triage.domain.enums.Prioridad;
 import co.edu.uniquindio.triage.domain.enums.TipoSolicitud;
 import co.edu.uniquindio.triage.dto.request.SugerirClasificacionRequest;
@@ -12,6 +14,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.anyString;
@@ -21,6 +26,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(IAController.class)
+@Import(SecurityConfig.class)
+@WithMockUser
 class IAControllerTest {
 
     @Autowired
@@ -31,6 +38,12 @@ class IAControllerTest {
 
     @MockBean
     private IAService iaService;
+
+    @MockBean
+    private JwtService jwtService;
+
+    @MockBean
+    private UserDetailsService userDetailsService;
 
     @Test
     @DisplayName("POST /api/ia/sugerir-clasificacion debería retornar 200")
