@@ -8,4 +8,6 @@ import java.util.List;
 public interface HistorialSolicitudRepository extends JpaRepository<HistorialSolicitudEntity, Long> {
 
     List<HistorialSolicitudEntity> findBySolicitudIdOrderByFechaHoraAsc(Long solicitudId);
+
+    List<HistorialSolicitudEntity> findBySolicitudIdInOrderByFechaHoraAsc(List<Long> solicitudIds);
 }

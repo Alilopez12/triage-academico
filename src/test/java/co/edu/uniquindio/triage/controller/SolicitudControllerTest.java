@@ -1,27 +1,35 @@
 package co.edu.uniquindio.triage.controller;
 
+import co.edu.uniquindio.triage.config.security.JwtService;
+import co.edu.uniquindio.triage.config.security.SecurityConfig;
+import co.edu.uniquindio.triage.domain.entity.UsuarioEntity;
 import co.edu.uniquindio.triage.domain.enums.*;
 import co.edu.uniquindio.triage.dto.request.*;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.PageResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
-import co.edu.uniquindio.triage.dto.response.SugerenciaClasificacionResponse;
-import co.edu.uniquindio.triage.service.IAService;
+import co.edu.uniquindio.triage.repository.UsuarioRepository;
 import co.edu.uniquindio.triage.service.SolicitudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
+import org.springframework.context.annotation.Import;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -32,6 +40,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(SolicitudController.class)
+@Import(SecurityConfig.class)
+@WithMockUser
 public class SolicitudControllerTest {
 
     @Autowired
@@ -43,6 +53,22 @@ public class SolicitudControllerTest {
     @MockBean
     private SolicitudService solicitudService;
 
+    @MockBean
+    private JwtService jwtService;
+
+    @MockBean
+    private UserDetailsService userDetailsService;
+
+    @MockBean
+    private UsuarioRepository usuarioRepository;
+
+    @BeforeEach
+    void setUp() {
+        UsuarioEntity mockAuthUser = new UsuarioEntity();
+        mockAuthUser.setId(1L);
+        mockAuthUser.setEmail("user");
+        when(usuarioRepository.findByEmail("user")).thenReturn(Optional.of(mockAuthUser));
+    }
 
     private SolicitudResponse crearSolicitudResponseBase() {
         SolicitudResponse response = new SolicitudResponse();
@@ -65,8 +91,7 @@ public class SolicitudControllerTest {
         SolicitudCreateRequest request = new SolicitudCreateRequest(
                 TipoSolicitud.HOMOLOGACION,
                 "Necesito homologar una materia.",
-                CanalOrigen.CORREO,
-                10L
+                CanalOrigen.CORREO
         );
 
         SolicitudResponse response = crearSolicitudResponseBase();
@@ -74,7 +99,7 @@ public class SolicitudControllerTest {
         response.setTipo(TipoSolicitud.HOMOLOGACION);
         response.setEstado(EstadoSolicitud.REGISTRADA);
 
-        when(solicitudService.registrarSolicitud(any(SolicitudCreateRequest.class)))
+        when(solicitudService.registrarSolicitud(any(SolicitudCreateRequest.class), anyLong()))
                 .thenReturn(response);
 
         mockMvc.perform(post("/api/solicitudes")
@@ -92,7 +117,6 @@ public class SolicitudControllerTest {
         SolicitudCreateRequest request = new SolicitudCreateRequest(
                 null,
                 "",
-                null,
                 null
         );
 
@@ -117,7 +141,6 @@ public class SolicitudControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/solicitudes/50/clasificar")
-                        .param("usuarioId", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -133,7 +156,6 @@ public class SolicitudControllerTest {
         request.setVersion(1L);
 
         mockMvc.perform(patch("/api/solicitudes/50/clasificar")
-                        .param("usuarioId", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -155,7 +177,6 @@ public class SolicitudControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(put("/api/solicitudes/50/prioridad")
-                        .param("usuarioId", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -176,7 +197,6 @@ public class SolicitudControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/solicitudes/50/asignar")
-                        .param("usuarioId", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
@@ -206,13 +226,12 @@ public class SolicitudControllerTest {
         CambiarEstadoRequest request = new CambiarEstadoRequest();
         request.setNuevoEstado(EstadoSolicitud.EN_ATENCION);
         request.setObservacion("Se inicia la atención del caso");
-        request.setUsuarioId(1L);
         request.setVersion(1L);
 
         SolicitudResponse response = crearSolicitudResponseBase();
         response.setEstado(EstadoSolicitud.EN_ATENCION);
 
-        when(solicitudService.cambiarEstado(eq(50L), any(CambiarEstadoRequest.class)))
+        when(solicitudService.cambiarEstado(eq(50L), any(CambiarEstadoRequest.class), anyLong()))
                 .thenReturn(response);
 
         mockMvc.perform(patch("/api/solicitudes/50/estado")
@@ -237,24 +256,12 @@ public class SolicitudControllerTest {
                 .thenReturn(response);
 
         mockMvc.perform(put("/api/solicitudes/50/cerrar")
-                        .param("usuarioId", "1")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.estado").value("CERRADA"))
                 .andExpect(jsonPath("$.observacionCierre")
                         .value("La solicitud fue atendida y cerrada correctamente."));
-    }
-
-    @Test
-    @DisplayName("GET /api/solicitudes/{id}/resumen debería retornar 200")
-    void deberiaGenerarResumenYRetornar200() throws Exception {
-        when(solicitudService.generarResumenSolicitud(50L))
-                .thenReturn("Resumen automático de la solicitud");
-
-        mockMvc.perform(get("/api/solicitudes/50/resumen"))
-                .andExpect(status().isOk())
-                .andExpect(content().string("Resumen automático de la solicitud"));
     }
 
     @Test

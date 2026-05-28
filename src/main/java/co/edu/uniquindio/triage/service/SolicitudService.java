@@ -40,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Transactional
 @Service
@@ -176,8 +177,8 @@ public class SolicitudService{
         return Sort.by(sortDirection, sortBy);
     }
 
-    public SolicitudResponse registrarSolicitud(SolicitudCreateRequest request) {
-        UsuarioEntity solicitanteEntity = obtenerUsuario(request.getSolicitanteId());
+    public SolicitudResponse registrarSolicitud(SolicitudCreateRequest request, Long solicitanteId) {
+        UsuarioEntity solicitanteEntity = obtenerUsuario(solicitanteId);
 
         if (solicitanteEntity.getRol() != RolUsuario.ESTUDIANTE) {
             throw new AutorizacionException("Solo los estudiantes pueden registrar solicitudes");
@@ -369,11 +370,11 @@ public class SolicitudService{
         return response;
     }
 
-    public SolicitudResponse cambiarEstado(Long solicitudId, CambiarEstadoRequest request) {
-        validarAdminOResponsable(request.getUsuarioId(), "cambiar el estado de solicitudes");
+    public SolicitudResponse cambiarEstado(Long solicitudId, CambiarEstadoRequest request, Long usuarioId) {
+        validarAdminOResponsable(usuarioId, "cambiar el estado de solicitudes");
 
         SolicitudEntity solicitudEntity = obtenerSolicitudEntity(solicitudId);
-        UsuarioEntity usuario = obtenerUsuario(request.getUsuarioId());
+        UsuarioEntity usuario = obtenerUsuario(usuarioId);
 
         validarVersion(request.getVersion(), solicitudEntity);
 
@@ -512,10 +513,21 @@ public class SolicitudService{
 
         Page<SolicitudEntity> resultPage = solicitudRepository.findAll(specification, pageable);
 
+        List<Long> ids = resultPage.getContent().stream().map(SolicitudEntity::getId).toList();
+
+        Map<Long, List<HistorialSolicitudEntity>> historialPorSolicitud =
+                historialSolicitudRepository.findBySolicitudIdInOrderByFechaHoraAsc(ids)
+                        .stream()
+                        .collect(java.util.stream.Collectors.groupingBy(
+                                h -> h.getSolicitud().getId()
+                        ));
+
         List<SolicitudResponse> content = resultPage.getContent().stream()
                 .map(entity -> SolicitudMapper.toResponse(
                         SolicitudMapper.toDomain(entity),
-                        SolicitudMapper.toHistorialDomainList(obtenerHistorialEntities(entity.getId()))
+                        SolicitudMapper.toHistorialDomainList(
+                                historialPorSolicitud.getOrDefault(entity.getId(), List.of())
+                        )
                 ))
                 .toList();
 

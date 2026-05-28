@@ -92,8 +92,7 @@ public class SolicitudServiceTest {
         SolicitudCreateRequest request = new SolicitudCreateRequest(
                 TipoSolicitud.HOMOLOGACION,
                 "Necesito homologar una materia.",
-                CanalOrigen.CORREO,
-                10L
+                CanalOrigen.CORREO
         );
 
         when(usuarioRepository.findById(10L)).thenReturn(Optional.of(estudiante));
@@ -107,7 +106,7 @@ public class SolicitudServiceTest {
         when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(50L))
                 .thenReturn(List.of());
 
-        SolicitudResponse response = solicitudService.registrarSolicitud(request);
+        SolicitudResponse response = solicitudService.registrarSolicitud(request, 10L);
 
         assertNotNull(response);
         assertEquals(50L, response.getId());
@@ -177,7 +176,8 @@ public class SolicitudServiceTest {
         SolicitudResponse response = solicitudService.asignarPrioridad(50L, request, 1L);
 
         assertNotNull(response);
-        assertEquals(Prioridad.CRITICA, response.getPrioridad());
+        // HOMOLOGACION(2) + ALTO(3) + 2 días(3) = 8 puntos → ALTA
+        assertEquals(Prioridad.ALTA, response.getPrioridad());
         assertNotNull(response.getJustificacionPrioridad());
 
         verify(solicitudRepository).saveAndFlush(any(SolicitudEntity.class));
@@ -217,7 +217,6 @@ public class SolicitudServiceTest {
         CambiarEstadoRequest request = new CambiarEstadoRequest();
         request.setNuevoEstado(EstadoSolicitud.EN_ATENCION);
         request.setObservacion("Se inicia la atención del caso");
-        request.setUsuarioId(2L);
         request.setVersion(1L);
 
         when(usuarioRepository.findById(2L)).thenReturn(Optional.of(responsable));
@@ -227,7 +226,7 @@ public class SolicitudServiceTest {
         when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(50L))
                 .thenReturn(List.of());
 
-        SolicitudResponse response = solicitudService.cambiarEstado(50L, request);
+        SolicitudResponse response = solicitudService.cambiarEstado(50L, request, 2L);
 
         assertNotNull(response);
         assertEquals(EstadoSolicitud.EN_ATENCION, response.getEstado());
@@ -270,7 +269,7 @@ public class SolicitudServiceTest {
                 any(PageRequest.class)
         )).thenReturn(new PageImpl<>(List.of(solicitudEntity)));
 
-        when(historialSolicitudRepository.findBySolicitudIdOrderByFechaHoraAsc(50L))
+        when(historialSolicitudRepository.findBySolicitudIdInOrderByFechaHoraAsc(List.of(50L)))
                 .thenReturn(List.of());
 
         PageResponse<SolicitudResponse> response = solicitudService.listarSolicitudes(

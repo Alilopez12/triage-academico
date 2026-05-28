@@ -18,48 +18,21 @@ public class SolicitudCreateRequest {
     @NotNull(message = "El canal de origen es obligatorio.")
     private CanalOrigen canalOrigen;
 
-    @NotNull(message = "El id del solicitante es obligatorio.")
-    private Long solicitanteId;
-
     public SolicitudCreateRequest() {
     }
 
-    public SolicitudCreateRequest(TipoSolicitud tipo, String descripcion, CanalOrigen canalOrigen, Long solicitanteId) {
+    public SolicitudCreateRequest(TipoSolicitud tipo, String descripcion, CanalOrigen canalOrigen) {
         this.tipo = tipo;
         this.descripcion = descripcion;
         this.canalOrigen = canalOrigen;
-        this.solicitanteId = solicitanteId;
     }
 
-    public TipoSolicitud getTipo() {
-        return tipo;
-    }
+    public TipoSolicitud getTipo() { return tipo; }
+    public void setTipo(TipoSolicitud tipo) { this.tipo = tipo; }
 
-    public void setTipo(TipoSolicitud tipo) {
-        this.tipo = tipo;
-    }
+    public String getDescripcion() { return descripcion; }
+    public void setDescripcion(String descripcion) { this.descripcion = descripcion; }
 
-    public String getDescripcion() {
-        return descripcion;
-    }
-
-    public void setDescripcion(String descripcion) {
-        this.descripcion = descripcion;
-    }
-
-    public CanalOrigen getCanalOrigen() {
-        return canalOrigen;
-    }
-
-    public void setCanalOrigen(CanalOrigen canalOrigen) {
-        this.canalOrigen = canalOrigen;
-    }
-
-    public Long getSolicitanteId() {
-        return solicitanteId;
-    }
-
-    public void setSolicitanteId(Long solicitanteId) {
-        this.solicitanteId = solicitanteId;
-    }
+    public CanalOrigen getCanalOrigen() { return canalOrigen; }
+    public void setCanalOrigen(CanalOrigen canalOrigen) { this.canalOrigen = canalOrigen; }
 }

@@ -12,14 +12,18 @@ import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.PageResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
+import co.edu.uniquindio.triage.exception.RecursoNoEncontradoException;
+import co.edu.uniquindio.triage.repository.UsuarioRepository;
 import co.edu.uniquindio.triage.service.SolicitudService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import java.util.List;
 
 @RestController
@@ -31,42 +35,52 @@ import java.util.List;
 public class SolicitudController {
 
     private final SolicitudService solicitudService;
+    private final UsuarioRepository usuarioRepository;
 
-    public SolicitudController(SolicitudService solicitudService) {
+    public SolicitudController(SolicitudService solicitudService, UsuarioRepository usuarioRepository) {
         this.solicitudService = solicitudService;
+        this.usuarioRepository = usuarioRepository;
+    }
+
+    private Long resolverUsuarioId(Authentication authentication) {
+        String email = authentication.getName();
+        return usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario autenticado no encontrado"))
+                .getId();
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public SolicitudResponse registrarSolicitud(@Valid @RequestBody SolicitudCreateRequest request) {
-        return solicitudService.registrarSolicitud(request);
+    public SolicitudResponse registrarSolicitud(@Valid @RequestBody SolicitudCreateRequest request,
+                                                Authentication authentication) {
+        return solicitudService.registrarSolicitud(request, resolverUsuarioId(authentication));
     }
 
     @PatchMapping("/{id}/clasificar")
     public SolicitudResponse clasificarSolicitud(
             @PathVariable Long id,
-            @RequestParam Long usuarioId,
-            @Valid @RequestBody ClasificarSolicitudRequest request) {
+            @Valid @RequestBody ClasificarSolicitudRequest request,
+            Authentication authentication) {
 
-        return solicitudService.clasificarSolicitud(id, usuarioId, request);
+        return solicitudService.clasificarSolicitud(id, resolverUsuarioId(authentication), request);
     }
 
     @PutMapping("/{id}/prioridad")
     public SolicitudResponse asignarPrioridad(
             @PathVariable Long id,
-            @RequestParam Long usuarioId,
-            @Valid @RequestBody AsignarPrioridadRequest request) {
+            @Valid @RequestBody AsignarPrioridadRequest request,
+            Authentication authentication) {
 
-        return solicitudService.asignarPrioridad(id, request, usuarioId);
+        return solicitudService.asignarPrioridad(id, request, resolverUsuarioId(authentication));
     }
 
     @PatchMapping("/{id}/asignar")
     public SolicitudResponse asignarResponsable(
             @PathVariable Long id,
-            @RequestParam Long usuarioId,
-            @Valid @RequestBody AsignarResponsableRequest request) {
+            @Valid @RequestBody AsignarResponsableRequest request,
+            Authentication authentication) {
 
-        return solicitudService.asignarResponsable(id, request, usuarioId);
+        return solicitudService.asignarResponsable(id, request, resolverUsuarioId(authentication));
     }
 
     @GetMapping("/{id}/historial")
@@ -77,17 +91,18 @@ public class SolicitudController {
     @PatchMapping("/{id}/estado")
     public SolicitudResponse cambiarEstado(
             @PathVariable Long id,
-            @Valid @RequestBody CambiarEstadoRequest request) {
-        return solicitudService.cambiarEstado(id, request);
+            @Valid @RequestBody CambiarEstadoRequest request,
+            Authentication authentication) {
+        return solicitudService.cambiarEstado(id, request, resolverUsuarioId(authentication));
     }
 
     @PutMapping("/{id}/cerrar")
     public SolicitudResponse cerrarSolicitud(
             @PathVariable Long id,
-            @RequestParam Long usuarioId,
-            @Valid @RequestBody CerrarSolicitudRequest request) {
+            @Valid @RequestBody CerrarSolicitudRequest request,
+            Authentication authentication) {
 
-        return solicitudService.cerrarSolicitud(id, request, usuarioId);
+        return solicitudService.cerrarSolicitud(id, request, resolverUsuarioId(authentication));
     }
 
     @Operation(
@@ -119,7 +134,6 @@ public class SolicitudController {
                 direction
         );
     }
-
 
     @GetMapping("/{id}")
     public SolicitudResponse obtenerSolicitudPorId(@PathVariable Long id) {
