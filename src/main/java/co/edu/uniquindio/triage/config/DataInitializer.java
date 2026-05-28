@@ -42,7 +42,7 @@ public class DataInitializer {
                 usuarioRepository.save(admin);
                 usuarioRepository.save(responsable);
 
-                System.out.println("Usuarios iniciales creados ✔");
+                System.out.println("Usuarios iniciales creados");
             }
         };
     }
