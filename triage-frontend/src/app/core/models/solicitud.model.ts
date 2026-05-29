@@ -26,7 +26,7 @@ export interface SolicitudResponse {
   solicitanteId: number;
   nombreSolicitante: string;
   responsableAsignadoId?: number;
-  nombreResponsable?: string;
+  nombreResponsableAsignado?: string;
   observacionCierre?: string;
   historial: HistorialItem[];
 }

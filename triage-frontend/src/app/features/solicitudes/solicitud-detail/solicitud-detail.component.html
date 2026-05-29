@@ -101,8 +101,8 @@
             <div class="info-grid">
               <div class="info-item">
                 <span class="label">Responsable Asignado</span>
-                @if (solicitud.nombreResponsable) {
-                  <span class="value">{{ solicitud.nombreResponsable }}</span>
+                @if (solicitud.nombreResponsableAsignado) {
+                  <span class="value">{{ solicitud.nombreResponsableAsignado }}</span>
                 } @else {
                   <span class="value muted">Sin asignar</span>
                 }
@@ -121,7 +121,7 @@
             </mat-card-title>
           </mat-card-header>
           <mat-card-content>
-            @if (solicitud.historial.length === 0) {
+            @if (!solicitud.historial?.length) {
               <p class="muted">Sin historial registrado.</p>
             } @else {
               <div class="timeline">

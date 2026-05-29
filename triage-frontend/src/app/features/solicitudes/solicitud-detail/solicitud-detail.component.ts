@@ -1,7 +1,8 @@
-import { Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
+import { Subject, takeUntil, timeout, TimeoutError } from 'rxjs';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -44,13 +45,15 @@ import { UsuarioResponse } from '../../../core/models/usuario.model';
   templateUrl: './solicitud-detail.component.html',
   styleUrl: './solicitud-detail.component.scss'
 })
-export class SolicitudDetailComponent implements OnInit {
+export class SolicitudDetailComponent implements OnInit, OnDestroy {
+  private readonly destroy$ = new Subject<void>();
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly solicitudService = inject(SolicitudService);
   private readonly usuarioService = inject(UsuarioService);
   private readonly authService = inject(AuthService);
   private readonly fb = inject(FormBuilder);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   solicitud: SolicitudResponse | null = null;
   loading = true;
@@ -125,24 +128,40 @@ export class SolicitudDetailComponent implements OnInit {
     this.cargarResponsables();
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   cargarSolicitud(id: number): void {
     this.loading = true;
-    this.solicitudService.obtenerPorId(id).subscribe({
+    this.errorMessage = '';
+    this.solicitudService.obtenerPorId(id).pipe(
+      timeout(15000),
+      takeUntil(this.destroy$)
+    ).subscribe({
       next: (sol) => {
-        this.solicitud = sol;
+        this.solicitud = { ...sol, historial: sol.historial ?? [] };
         this.loading = false;
+        this.cdr.detectChanges();
       },
-      error: () => {
+      error: (err) => {
         this.loading = false;
-        this.errorMessage = 'No se pudo cargar la solicitud.';
+        this.errorMessage = err instanceof TimeoutError
+          ? 'El servidor tardó demasiado en responder. Verifique que el backend esté activo.'
+          : 'No se pudo cargar la solicitud.';
+        this.cdr.detectChanges();
       }
     });
   }
 
   cargarResponsables(): void {
-    this.usuarioService.listar('RESPONSABLE').subscribe({
+    this.usuarioService.listar('RESPONSABLE').pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
       next: (users) => {
         this.responsables = users;
+        this.cdr.detectChanges();
       },
       error: () => {}
     });

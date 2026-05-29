@@ -1,0 +1,102 @@
+diff --git a/triage-frontend/src/app/core/models/solicitud.model.ts b/triage-frontend/src/app/core/models/solicitud.model.ts
+index 2c599d4..7fb03e3 100644
+--- a/triage-frontend/src/app/core/models/solicitud.model.ts
++++ b/triage-frontend/src/app/core/models/solicitud.model.ts
+@@ -26,7 +26,7 @@ export interface SolicitudResponse {
+   solicitanteId: number;
+   nombreSolicitante: string;
+   responsableAsignadoId?: number;
+-  nombreResponsable?: string;
++  nombreResponsableAsignado?: string;
+   observacionCierre?: string;
+   historial: HistorialItem[];
+ }
+diff --git a/triage-frontend/src/app/features/solicitudes/solicitud-detail/solicitud-detail.component.html b/triage-frontend/src/app/features/solicitudes/solicitud-detail/solicitud-detail.component.html
+index f52fbcc..6bc6d27 100644
+--- a/triage-frontend/src/app/features/solicitudes/solicitud-detail/solicitud-detail.component.html
++++ b/triage-frontend/src/app/features/solicitudes/solicitud-detail/solicitud-detail.component.html
+@@ -101,8 +101,8 @@
+             <div class="info-grid">
+               <div class="info-item">
+                 <span class="label">Responsable Asignado</span>
+-                @if (solicitud.nombreResponsable) {
+-                  <span class="value">{{ solicitud.nombreResponsable }}</span>
++                @if (solicitud.nombreResponsableAsignado) {
++                  <span class="value">{{ solicitud.nombreResponsableAsignado }}</span>
+                 } @else {
+                   <span class="value muted">Sin asignar</span>
+                 }
+@@ -121,7 +121,7 @@
+             </mat-card-title>
+           </mat-card-header>
+           <mat-card-content>
+-            @if (solicitud.historial.length === 0) {
++            @if (!solicitud.historial?.length) {
+               <p class="muted">Sin historial registrado.</p>
+             } @else {
+               <div class="timeline">
+diff --git a/triage-frontend/src/app/features/solicitudes/solicitud-detail/solicitud-detail.component.ts b/triage-frontend/src/app/features/solicitudes/solicitud-detail/solicitud-detail.component.ts
+index e8ecfb6..4824f0d 100644
+--- a/triage-frontend/src/app/features/solicitudes/solicitud-detail/solicitud-detail.component.ts
++++ b/triage-frontend/src/app/features/solicitudes/solicitud-detail/solicitud-detail.component.ts
+@@ -1,7 +1,8 @@
+-import { Component, inject, OnInit } from '@angular/core';
++import { Component, inject, OnInit, OnDestroy } from '@angular/core';
+ import { CommonModule } from '@angular/common';
+ import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+ import { ActivatedRoute, Router, RouterModule } from '@angular/router';
++import { Subject, takeUntil, timeout, TimeoutError } from 'rxjs';
+ import { MatCardModule } from '@angular/material/card';
+ import { MatButtonModule } from '@angular/material/button';
+ import { MatIconModule } from '@angular/material/icon';
+@@ -44,7 +45,8 @@ import { UsuarioResponse } from '../../../core/models/usuario.model';
+   templateUrl: './solicitud-detail.component.html',
+   styleUrl: './solicitud-detail.component.scss'
+ })
+-export class SolicitudDetailComponent implements OnInit {
++export class SolicitudDetailComponent implements OnInit, OnDestroy {
++  private readonly destroy$ = new Subject<void>();
+   private readonly route = inject(ActivatedRoute);
+   private readonly router = inject(Router);
+   private readonly solicitudService = inject(SolicitudService);
+@@ -125,22 +127,35 @@ export class SolicitudDetailComponent implements OnInit {
+     this.cargarResponsables();
+   }
+ 
++  ngOnDestroy(): void {
++    this.destroy$.next();
++    this.destroy$.complete();
++  }
++
+   cargarSolicitud(id: number): void {
+     this.loading = true;
+-    this.solicitudService.obtenerPorId(id).subscribe({
++    this.errorMessage = '';
++    this.solicitudService.obtenerPorId(id).pipe(
++      timeout(15000),
++      takeUntil(this.destroy$)
++    ).subscribe({
+       next: (sol) => {
+-        this.solicitud = sol;
++        this.solicitud = { ...sol, historial: sol.historial ?? [] };
+         this.loading = false;
+       },
+-      error: () => {
++      error: (err) => {
+         this.loading = false;
+-        this.errorMessage = 'No se pudo cargar la solicitud.';
++        this.errorMessage = err instanceof TimeoutError
++          ? 'La solicitud tardó demasiado en cargar. Verifique la conexión con el servidor.'
++          : 'No se pudo cargar la solicitud.';
+       }
+     });
+   }
+ 
+   cargarResponsables(): void {
+-    this.usuarioService.listar('RESPONSABLE').subscribe({
++    this.usuarioService.listar('RESPONSABLE').pipe(
++      takeUntil(this.destroy$)
++    ).subscribe({
+       next: (users) => {
+         this.responsables = users;
+       },
