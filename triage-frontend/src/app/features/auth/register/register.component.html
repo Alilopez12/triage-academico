@@ -2,7 +2,6 @@
   <mat-card class="register-card">
     <mat-card-header class="card-header">
       <div class="logo-section">
-        <mat-icon class="logo-icon">school</mat-icon>
         <h1 class="app-title">Triage Académico</h1>
         <p class="app-subtitle">Crear una cuenta nueva</p>
       </div>
@@ -14,7 +13,6 @@
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Nombre completo</mat-label>
           <input matInput formControlName="nombre" placeholder="Tu nombre completo" autocomplete="name" />
-          <mat-icon matPrefix>person</mat-icon>
           @if (form.get('nombre')?.hasError('required') && form.get('nombre')?.touched) {
             <mat-error>El nombre es requerido</mat-error>
           } @else if (form.get('nombre')?.hasError('minlength') && form.get('nombre')?.touched) {
@@ -25,7 +23,6 @@
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Correo electrónico</mat-label>
           <input matInput type="email" formControlName="email" placeholder="usuario@universidad.edu" autocomplete="email" />
-          <mat-icon matPrefix>email</mat-icon>
           @if (form.get('email')?.hasError('required') && form.get('email')?.touched) {
             <mat-error>El correo es requerido</mat-error>
           } @else if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
@@ -39,15 +36,12 @@
             <mat-option value="ESTUDIANTE">Estudiante</mat-option>
             <mat-option value="RESPONSABLE">Responsable académico</mat-option>
           </mat-select>
-          <mat-icon matPrefix>badge</mat-icon>
         </mat-form-field>
 
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Contraseña</mat-label>
           <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" autocomplete="new-password" />
-          <mat-icon matPrefix>lock</mat-icon>
           <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
-            <mat-icon>{{ hidePassword ? 'visibility_off' : 'visibility' }}</mat-icon>
           </button>
           @if (form.get('password')?.hasError('required') && form.get('password')?.touched) {
             <mat-error>La contraseña es requerida</mat-error>
@@ -59,9 +53,7 @@
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Confirmar contraseña</mat-label>
           <input matInput [type]="hideConfirm ? 'password' : 'text'" formControlName="confirmPassword" autocomplete="new-password" />
-          <mat-icon matPrefix>lock_reset</mat-icon>
           <button mat-icon-button matSuffix type="button" (click)="hideConfirm = !hideConfirm">
-            <mat-icon>{{ hideConfirm ? 'visibility_off' : 'visibility' }}</mat-icon>
           </button>
           @if (form.hasError('passwordMismatch') && form.get('confirmPassword')?.touched) {
             <mat-error>Las contraseñas no coinciden</mat-error>
@@ -70,7 +62,6 @@
 
         @if (errorMessage) {
           <div class="error-alert">
-            <mat-icon>error_outline</mat-icon>
             <span>{{ errorMessage }}</span>
           </div>
         }
@@ -83,7 +74,6 @@
             </ng-container>
           } @else {
             <ng-container>
-              <mat-icon>person_add</mat-icon>
               <span>Crear cuenta</span>
             </ng-container>
           }
