@@ -12,6 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
 import { SolicitudService } from '../../../core/services/solicitud.service';
+import { AuthService } from '../../../core/services/auth.service';
 import {
   SolicitudResponse,
   EstadoSolicitud,
@@ -41,7 +42,10 @@ import {
 })
 export class SolicitudListComponent implements OnInit {
   private readonly solicitudService = inject(SolicitudService);
+  private readonly authService = inject(AuthService);
   private readonly fb = inject(FormBuilder);
+
+  readonly esEstudiante = this.authService.getUsuarioActual()?.rol === 'ESTUDIANTE';
 
   @ViewChild(MatPaginator) paginator!: MatPaginator;
 

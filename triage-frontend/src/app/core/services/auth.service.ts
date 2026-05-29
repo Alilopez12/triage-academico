@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { Observable, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { LoginRequest, LoginResponse, UsuarioAutenticado } from '../models/auth.model';
+import { LoginRequest, LoginResponse, RegisterRequest, UsuarioAutenticado } from '../models/auth.model';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -44,6 +44,21 @@ export class AuthService {
 
   isAuthenticated(): boolean {
     return !!localStorage.getItem('auth_token');
+  }
+
+  register(req: RegisterRequest): Observable<LoginResponse> {
+    return this.http.post<LoginResponse>(`${this.apiUrl}/auth/register`, req).pipe(
+      tap((res) => {
+        localStorage.setItem('auth_token', res.token);
+        const usuario: UsuarioAutenticado = {
+          userId: res.userId,
+          nombre: res.nombre,
+          email: res.email,
+          rol: res.rol
+        };
+        localStorage.setItem('usuario_actual', JSON.stringify(usuario));
+      })
+    );
   }
 
   isAdmin(): boolean {

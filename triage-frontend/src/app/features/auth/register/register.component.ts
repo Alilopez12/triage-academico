@@ -1,46 +1,57 @@
 import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
+import { Router, RouterModule } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatIconModule } from '@angular/material/icon';
-import { RouterModule } from '@angular/router';
+import { MatSelectModule } from '@angular/material/select';
 import { AuthService } from '../../../core/services/auth.service';
 
+function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
+  const password = control.get('password')?.value;
+  const confirm = control.get('confirmPassword')?.value;
+  return password && confirm && password !== confirm ? { passwordMismatch: true } : null;
+}
+
 @Component({
-  selector: 'app-login',
+  selector: 'app-register',
   standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    RouterModule,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
     MatButtonModule,
     MatProgressSpinnerModule,
     MatIconModule,
-    RouterModule
+    MatSelectModule
   ],
-  templateUrl: './login.component.html',
-  styleUrl: './login.component.scss'
+  templateUrl: './register.component.html',
+  styleUrl: './register.component.scss'
 })
-export class LoginComponent {
+export class RegisterComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly fb = inject(FormBuilder);
 
   form = this.fb.group({
+    nombre: ['', [Validators.required, Validators.minLength(3)]],
     email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required]]
-  });
+    rol: ['ESTUDIANTE' as 'ESTUDIANTE' | 'RESPONSABLE', Validators.required],
+    password: ['', [Validators.required, Validators.minLength(8)]],
+    confirmPassword: ['', Validators.required]
+  }, { validators: passwordMatchValidator });
 
   loading = false;
   errorMessage = '';
   hidePassword = true;
+  hideConfirm = true;
 
   onSubmit(): void {
     if (this.form.invalid) {
@@ -50,20 +61,20 @@ export class LoginComponent {
     this.loading = true;
     this.errorMessage = '';
 
-    const { email, password } = this.form.value;
-    this.authService.login({ email: email!, password: password! }).subscribe({
+    const { nombre, email, password, rol } = this.form.value;
+    this.authService.register({ nombre: nombre!, email: email!, password: password!, rol: rol! }).subscribe({
       next: () => {
         this.loading = false;
         this.router.navigate(['/solicitudes']);
       },
       error: (err) => {
         this.loading = false;
-        if (err.status === 401) {
-          this.errorMessage = 'Credenciales incorrectas. Verifique su email y contraseña.';
+        if (err.status === 422) {
+          this.errorMessage = err.error?.message ?? 'Error al registrarse.';
         } else if (err.status === 0) {
-          this.errorMessage = 'No se pudo conectar con el servidor. Intente más tarde.';
+          this.errorMessage = 'No se pudo conectar con el servidor.';
         } else {
-          this.errorMessage = 'Ocurrió un error al iniciar sesión.';
+          this.errorMessage = 'Ocurrió un error al crear la cuenta.';
         }
       }
     });

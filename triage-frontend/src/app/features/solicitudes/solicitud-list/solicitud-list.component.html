@@ -1,9 +1,11 @@
 <div class="list-container">
   <div class="page-header">
     <h2>Solicitudes</h2>
-    <a mat-raised-button color="primary" routerLink="nueva">
-      Nueva Solicitud
-    </a>
+    @if (esEstudiante) {
+      <a mat-raised-button color="primary" routerLink="nueva">
+        Nueva Solicitud
+      </a>
+    }
   </div>
 
   <mat-card class="filter-card">
@@ -40,7 +42,8 @@
         </mat-form-field>
 
         <div class="filter-actions">
-          <button mat-raised-button color="primary" type="button" (click)="buscar()"> Buscar
+          <button mat-raised-button color="primary" type="button" (click)="buscar()">
+            Buscar
           </button>
           <button mat-stroked-button type="button" (click)="limpiarFiltros()">
             Limpiar

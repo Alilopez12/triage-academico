@@ -11,7 +11,6 @@
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Nombre completo</mat-label>
           <input matInput formControlName="nombre" placeholder="Nombre del usuario" />
-          <mat-icon matPrefix>person</mat-icon>
           @if (form.get('nombre')?.hasError('required') && form.get('nombre')?.touched) {
             <mat-error>El nombre es requerido</mat-error>
           } @else if (form.get('nombre')?.hasError('minlength') && form.get('nombre')?.touched) {
@@ -22,7 +21,6 @@
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Correo electrónico</mat-label>
           <input matInput type="email" formControlName="email" placeholder="correo@dominio.com" />
-          <mat-icon matPrefix>email</mat-icon>
           @if (form.get('email')?.hasError('required') && form.get('email')?.touched) {
             <mat-error>El correo es requerido</mat-error>
           } @else if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
@@ -62,14 +60,12 @@
 
         @if (errorMessage) {
           <div class="error-alert">
-            <mat-icon>error_outline</mat-icon>
             <span>{{ errorMessage }}</span>
           </div>
         }
 
         <div class="form-actions">
           <button mat-stroked-button type="button" (click)="cancel()">
-            <mat-icon>arrow_back</mat-icon>
             Cancelar
           </button>
           <button mat-raised-button color="primary" type="submit" [disabled]="loading">

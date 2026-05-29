@@ -17,3 +17,10 @@ export interface UsuarioAutenticado {
   email: string;
   rol: 'ADMIN' | 'ESTUDIANTE' | 'RESPONSABLE';
 }
+
+export interface RegisterRequest {
+  nombre: string;
+  email: string;
+  password: string;
+  rol: 'ESTUDIANTE' | 'RESPONSABLE';
+}
