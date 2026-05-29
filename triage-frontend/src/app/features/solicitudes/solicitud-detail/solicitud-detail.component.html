@@ -1,0 +1,297 @@
+<div class="detail-container">
+  <div class="page-header">
+    <button mat-stroked-button (click)="volver()">
+      <mat-icon>arrow_back</mat-icon>
+      Volver
+    </button>
+    @if (solicitud) {
+      <h2>Solicitud #{{ solicitud.id }}</h2>
+    }
+  </div>
+
+  @if (loading) {
+    <div class="spinner-container">
+      <mat-spinner diameter="48"></mat-spinner>
+    </div>
+  } @else if (errorMessage && !solicitud) {
+    <mat-card>
+      <mat-card-content class="error-content">
+        <mat-icon color="warn">error</mat-icon>
+        <span>{{ errorMessage }}</span>
+      </mat-card-content>
+    </mat-card>
+  } @else if (solicitud) {
+    <div class="detail-layout">
+      <div class="left-column">
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>Datos Generales</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">Tipo</span>
+                <span class="value">{{ solicitud.tipo }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Canal Origen</span>
+                <span class="value">{{ solicitud.canalOrigen }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Estado</span>
+                <span class="value estado-badge estado-{{ solicitud.estado }}">{{ solicitud.estado }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Solicitante</span>
+                <span class="value">{{ solicitud.nombreSolicitante }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Fecha Registro</span>
+                <span class="value">{{ solicitud.fechaRegistro | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+              <div class="info-item full">
+                <span class="label">Descripción</span>
+                <span class="value descripcion">{{ solicitud.descripcion }}</span>
+              </div>
+              @if (solicitud.observacionCierre) {
+                <div class="info-item full">
+                  <span class="label">Observación de Cierre</span>
+                  <span class="value">{{ solicitud.observacionCierre }}</span>
+                </div>
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>Prioridad</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">Prioridad</span>
+                @if (solicitud.prioridad) {
+                  <span class="value prioridad-badge prioridad-{{ solicitud.prioridad }}">{{ solicitud.prioridad }}</span>
+                } @else {
+                  <span class="value muted">Sin asignar</span>
+                }
+              </div>
+              <div class="info-item">
+                <span class="label">Impacto Académico</span>
+                <span class="value">{{ solicitud.impactoAcademico ?? '-' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="label">Fecha Límite</span>
+                <span class="value">{{ solicitud.fechaLimite ? (solicitud.fechaLimite | date:'dd/MM/yyyy') : '-' }}</span>
+              </div>
+              @if (solicitud.justificacionPrioridad) {
+                <div class="info-item full">
+                  <span class="label">Justificación</span>
+                  <span class="value">{{ solicitud.justificacionPrioridad }}</span>
+                </div>
+              }
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card>
+          <mat-card-header>
+            <mat-card-title>Responsable</mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="label">Responsable Asignado</span>
+                @if (solicitud.nombreResponsable) {
+                  <span class="value">{{ solicitud.nombreResponsable }}</span>
+                } @else {
+                  <span class="value muted">Sin asignar</span>
+                }
+              </div>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+
+      <div class="right-column">
+        <mat-card class="historial-card">
+          <mat-card-header>
+            <mat-card-title>
+              <mat-icon>history</mat-icon>
+              Historial
+            </mat-card-title>
+          </mat-card-header>
+          <mat-card-content>
+            @if (solicitud.historial.length === 0) {
+              <p class="muted">Sin historial registrado.</p>
+            } @else {
+              <div class="timeline">
+                @for (item of solicitud.historial; track item.fechaHora) {
+                  <div class="timeline-item">
+                    <div class="timeline-dot"></div>
+                    <div class="timeline-content">
+                      <div class="timeline-accion">{{ item.accion }}</div>
+                      <div class="timeline-obs">{{ item.observaciones }}</div>
+                      <div class="timeline-fecha">{{ item.fechaHora | date:'dd/MM/yyyy HH:mm' }}</div>
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+          </mat-card-content>
+        </mat-card>
+
+        @if (canClasificar || canAsignarPrioridad || canAsignarResponsable || canCambiarEstado || canCerrar) {
+          <mat-card>
+            <mat-card-header>
+              <mat-card-title>
+                <mat-icon>settings</mat-icon>
+                Acciones
+              </mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+              @if (errorMessage) {
+                <div class="error-alert">
+                  <mat-icon>error_outline</mat-icon>
+                  <span>{{ errorMessage }}</span>
+                </div>
+              }
+
+              <mat-accordion>
+                @if (canClasificar) {
+                  <mat-expansion-panel>
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>Clasificar Solicitud</mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <form [formGroup]="clasificarForm" (ngSubmit)="clasificar()" class="action-form">
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Tipo</mat-label>
+                        <mat-select formControlName="tipo">
+                          @for (t of tipoOptions; track t) {
+                            <mat-option [value]="t">{{ t }}</mat-option>
+                          }
+                        </mat-select>
+                        @if (clasificarForm.get('tipo')?.hasError('required') && clasificarForm.get('tipo')?.touched) {
+                          <mat-error>El tipo es requerido</mat-error>
+                        }
+                      </mat-form-field>
+                      <button mat-raised-button color="primary" type="submit" [disabled]="actionLoading">
+                        Clasificar
+                      </button>
+                    </form>
+                  </mat-expansion-panel>
+                }
+
+                @if (canAsignarPrioridad) {
+                  <mat-expansion-panel>
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>Asignar Prioridad</mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <form [formGroup]="prioridadForm" (ngSubmit)="asignarPrioridad()" class="action-form">
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Impacto Académico</mat-label>
+                        <mat-select formControlName="impactoAcademico">
+                          @for (i of impactoOptions; track i) {
+                            <mat-option [value]="i">{{ i }}</mat-option>
+                          }
+                        </mat-select>
+                        @if (prioridadForm.get('impactoAcademico')?.hasError('required') && prioridadForm.get('impactoAcademico')?.touched) {
+                          <mat-error>El impacto es requerido</mat-error>
+                        }
+                      </mat-form-field>
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Fecha Límite</mat-label>
+                        <input matInput type="date" formControlName="fechaLimite" />
+                        @if (prioridadForm.get('fechaLimite')?.hasError('required') && prioridadForm.get('fechaLimite')?.touched) {
+                          <mat-error>La fecha límite es requerida</mat-error>
+                        }
+                      </mat-form-field>
+                      <button mat-raised-button color="primary" type="submit" [disabled]="actionLoading">
+                        Asignar Prioridad
+                      </button>
+                    </form>
+                  </mat-expansion-panel>
+                }
+
+                @if (canAsignarResponsable) {
+                  <mat-expansion-panel>
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>Asignar Responsable</mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <form [formGroup]="responsableForm" (ngSubmit)="asignarResponsable()" class="action-form">
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Responsable</mat-label>
+                        <mat-select formControlName="responsableId">
+                          @for (r of responsables; track r.id) {
+                            <mat-option [value]="r.id">{{ r.nombre }} ({{ r.email }})</mat-option>
+                          }
+                        </mat-select>
+                        @if (responsableForm.get('responsableId')?.hasError('required') && responsableForm.get('responsableId')?.touched) {
+                          <mat-error>El responsable es requerido</mat-error>
+                        }
+                      </mat-form-field>
+                      <button mat-raised-button color="primary" type="submit" [disabled]="actionLoading">
+                        Asignar
+                      </button>
+                    </form>
+                  </mat-expansion-panel>
+                }
+
+                @if (canCambiarEstado) {
+                  <mat-expansion-panel>
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>Cambiar Estado</mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <form [formGroup]="estadoForm" (ngSubmit)="cambiarEstado()" class="action-form">
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Nuevo Estado</mat-label>
+                        <mat-select formControlName="nuevoEstado">
+                          @for (e of estadoOptions; track e) {
+                            <mat-option [value]="e">{{ e }}</mat-option>
+                          }
+                        </mat-select>
+                        @if (estadoForm.get('nuevoEstado')?.hasError('required') && estadoForm.get('nuevoEstado')?.touched) {
+                          <mat-error>El estado es requerido</mat-error>
+                        }
+                      </mat-form-field>
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Observación (opcional)</mat-label>
+                        <textarea matInput formControlName="observacion" rows="3"></textarea>
+                      </mat-form-field>
+                      <button mat-raised-button color="primary" type="submit" [disabled]="actionLoading">
+                        Cambiar Estado
+                      </button>
+                    </form>
+                  </mat-expansion-panel>
+                }
+
+                @if (canCerrar) {
+                  <mat-expansion-panel>
+                    <mat-expansion-panel-header>
+                      <mat-panel-title>Cerrar Solicitud</mat-panel-title>
+                    </mat-expansion-panel-header>
+                    <form [formGroup]="cerrarForm" (ngSubmit)="cerrar()" class="action-form">
+                      <mat-form-field appearance="outline" class="full-width">
+                        <mat-label>Observación de Cierre</mat-label>
+                        <textarea matInput formControlName="observacionCierre" rows="4" placeholder="Describa el motivo del cierre..."></textarea>
+                        @if (cerrarForm.get('observacionCierre')?.hasError('required') && cerrarForm.get('observacionCierre')?.touched) {
+                          <mat-error>La observación de cierre es requerida</mat-error>
+                        } @else if (cerrarForm.get('observacionCierre')?.hasError('minlength') && cerrarForm.get('observacionCierre')?.touched) {
+                          <mat-error>Mínimo 10 caracteres</mat-error>
+                        }
+                      </mat-form-field>
+                      <button mat-raised-button color="warn" type="submit" [disabled]="actionLoading">
+                        Cerrar Solicitud
+                      </button>
+                    </form>
+                  </mat-expansion-panel>
+                }
+              </mat-accordion>
+            </mat-card-content>
+          </mat-card>
+        }
+      </div>
+    </div>
+  }
+</div>

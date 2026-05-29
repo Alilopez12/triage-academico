@@ -1,0 +1,74 @@
+<div class="form-container">
+  <mat-card>
+    <mat-card-header>
+      <mat-card-title>
+        Nueva Solicitud
+      </mat-card-title>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="solicitud-form">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Tipo de Solicitud</mat-label>
+          <mat-select formControlName="tipo">
+            @for (t of tipoOptions; track t) {
+              <mat-option [value]="t">{{ t }}</mat-option>
+            }
+          </mat-select>
+          @if (form.get('tipo')?.hasError('required') && form.get('tipo')?.touched) {
+            <mat-error>El tipo es requerido</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Canal de Origen</mat-label>
+          <mat-select formControlName="canalOrigen">
+            @for (c of canalOptions; track c) {
+              <mat-option [value]="c">{{ c }}</mat-option>
+            }
+          </mat-select>
+          @if (form.get('canalOrigen')?.hasError('required') && form.get('canalOrigen')?.touched) {
+            <mat-error>El canal de origen es requerido</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Descripción</mat-label>
+          <textarea
+            matInput
+            formControlName="descripcion"
+            rows="6"
+            placeholder="Describa detalladamente su solicitud (mínimo 10 caracteres)..."
+            maxlength="500">
+          </textarea>
+          <mat-hint align="end">{{ descripcionLength }}/500</mat-hint>
+          @if (form.get('descripcion')?.hasError('required') && form.get('descripcion')?.touched) {
+            <mat-error>La descripción es requerida</mat-error>
+          } @else if (form.get('descripcion')?.hasError('minlength') && form.get('descripcion')?.touched) {
+            <mat-error>La descripción debe tener al menos 10 caracteres</mat-error>
+          }
+        </mat-form-field>
+
+        @if (errorMessage) {
+          <div class="error-alert">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ errorMessage }}</span>
+          </div>
+        }
+
+        <div class="form-actions">
+          <button mat-stroked-button type="button" (click)="cancel()">
+            Cancelar
+          </button>
+          <button mat-raised-button color="primary" type="submit" [disabled]="loading">
+            @if (loading) {
+              <ng-container><mat-spinner diameter="20"></mat-spinner></ng-container>
+            } @else {
+            }
+            Guardar Solicitud
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>
