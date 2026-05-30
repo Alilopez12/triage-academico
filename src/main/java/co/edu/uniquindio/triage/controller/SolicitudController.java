@@ -9,121 +9,100 @@ import co.edu.uniquindio.triage.dto.request.CambiarEstadoRequest;
 import co.edu.uniquindio.triage.dto.request.CerrarSolicitudRequest;
 import co.edu.uniquindio.triage.dto.request.ClasificarSolicitudRequest;
 import co.edu.uniquindio.triage.dto.request.SolicitudCreateRequest;
-import co.edu.uniquindio.triage.dto.request.SugerirClasificacionRequest;
 import co.edu.uniquindio.triage.dto.response.HistorialSolicitudResponse;
 import co.edu.uniquindio.triage.dto.response.PageResponse;
 import co.edu.uniquindio.triage.dto.response.SolicitudResponse;
-import co.edu.uniquindio.triage.dto.response.SugerenciaClasificacionResponse;
-import co.edu.uniquindio.triage.service.AsignarPrioridadUseCase;
-import co.edu.uniquindio.triage.service.AsignarResponsableUseCase;
-import co.edu.uniquindio.triage.service.CambiarEstadoSolicitudUseCase;
-import co.edu.uniquindio.triage.service.CerrarSolicitudUseCase;
-import co.edu.uniquindio.triage.service.ClasificarSolicitudUseCase;
-import co.edu.uniquindio.triage.service.ConsultarSolicitudUseCase;
-import co.edu.uniquindio.triage.service.RegistrarSolicitudUseCase;
-import co.edu.uniquindio.triage.service.impl.IAService;
-import co.edu.uniquindio.triage.service.impl.SolicitudService;
+import co.edu.uniquindio.triage.exception.RecursoNoEncontradoException;
+import co.edu.uniquindio.triage.repository.UsuarioRepository;
+import co.edu.uniquindio.triage.service.SolicitudService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
+
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/solicitudes")
-@Tag(name = "solicitud-controller", description = "Operaciones del ciclo de vida de solicitudes académicas")
+@Tag(
+        name = "solicitud-controller",
+        description = "Operaciones del ciclo de vida de solicitudes académicas"
+)
 public class SolicitudController {
 
-    private final RegistrarSolicitudUseCase registrarSolicitudUseCase;
-    private final ClasificarSolicitudUseCase clasificarSolicitudUseCase;
-    private final AsignarPrioridadUseCase asignarPrioridadUseCase;
-    private final AsignarResponsableUseCase asignarResponsableUseCase;
-    private final CambiarEstadoSolicitudUseCase cambiarEstadoSolicitudUseCase;
-    private final CerrarSolicitudUseCase cerrarSolicitudUseCase;
-    private final ConsultarSolicitudUseCase consultarSolicitudUseCase;
     private final SolicitudService solicitudService;
-    private final IAService iaService;
+    private final UsuarioRepository usuarioRepository;
 
-    public SolicitudController(RegistrarSolicitudUseCase registrarSolicitudUseCase,
-                               ClasificarSolicitudUseCase clasificarSolicitudUseCase,
-                               AsignarPrioridadUseCase asignarPrioridadUseCase,
-                               AsignarResponsableUseCase asignarResponsableUseCase,
-                               CambiarEstadoSolicitudUseCase cambiarEstadoSolicitudUseCase,
-                               CerrarSolicitudUseCase cerrarSolicitudUseCase,
-                               ConsultarSolicitudUseCase consultarSolicitudUseCase,
-                               SolicitudService solicitudService,
-                               IAService iaService) {
-        this.registrarSolicitudUseCase = registrarSolicitudUseCase;
-        this.clasificarSolicitudUseCase = clasificarSolicitudUseCase;
-        this.asignarPrioridadUseCase = asignarPrioridadUseCase;
-        this.asignarResponsableUseCase = asignarResponsableUseCase;
-        this.cambiarEstadoSolicitudUseCase = cambiarEstadoSolicitudUseCase;
-        this.cerrarSolicitudUseCase = cerrarSolicitudUseCase;
-        this.consultarSolicitudUseCase = consultarSolicitudUseCase;
+    public SolicitudController(SolicitudService solicitudService, UsuarioRepository usuarioRepository) {
         this.solicitudService = solicitudService;
-        this.iaService = iaService;
+        this.usuarioRepository = usuarioRepository;
+    }
+
+    private Long resolverUsuarioId(Authentication authentication) {
+        String email = authentication.getName();
+        return usuarioRepository.findByEmail(email)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario autenticado no encontrado"))
+                .getId();
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public SolicitudResponse registrarSolicitud(@Valid @RequestBody SolicitudCreateRequest request) {
-        return registrarSolicitudUseCase.ejecutar(request);
+    public SolicitudResponse registrarSolicitud(@Valid @RequestBody SolicitudCreateRequest request,
+                                                Authentication authentication) {
+        return solicitudService.registrarSolicitud(request, resolverUsuarioId(authentication));
     }
 
     @PatchMapping("/{id}/clasificar")
     public SolicitudResponse clasificarSolicitud(
             @PathVariable Long id,
-            @RequestParam Long usuarioId,
-            @Valid @RequestBody ClasificarSolicitudRequest request) {
+            @Valid @RequestBody ClasificarSolicitudRequest request,
+            Authentication authentication) {
 
-        return clasificarSolicitudUseCase.ejecutar(id, usuarioId, request);
+        return solicitudService.clasificarSolicitud(id, resolverUsuarioId(authentication), request);
     }
 
     @PutMapping("/{id}/prioridad")
     public SolicitudResponse asignarPrioridad(
             @PathVariable Long id,
-            @RequestParam Long usuarioId,
-            @Valid @RequestBody AsignarPrioridadRequest request) {
+            @Valid @RequestBody AsignarPrioridadRequest request,
+            Authentication authentication) {
 
-        return asignarPrioridadUseCase.ejecutar(id, request, usuarioId);
+        return solicitudService.asignarPrioridad(id, request, resolverUsuarioId(authentication));
     }
 
     @PatchMapping("/{id}/asignar")
     public SolicitudResponse asignarResponsable(
             @PathVariable Long id,
-            @RequestParam Long usuarioId,
-            @Valid @RequestBody AsignarResponsableRequest request) {
+            @Valid @RequestBody AsignarResponsableRequest request,
+            Authentication authentication) {
 
-        return asignarResponsableUseCase.ejecutar(id, request, usuarioId);
+        return solicitudService.asignarResponsable(id, request, resolverUsuarioId(authentication));
     }
 
     @GetMapping("/{id}/historial")
     public List<HistorialSolicitudResponse> obtenerHistorial(@PathVariable Long id) {
-        return consultarSolicitudUseCase.obtenerHistorial(id);
+        return solicitudService.obtenerHistorial(id);
     }
 
     @PatchMapping("/{id}/estado")
     public SolicitudResponse cambiarEstado(
             @PathVariable Long id,
-            @Valid @RequestBody CambiarEstadoRequest request) {
-        return cambiarEstadoSolicitudUseCase.ejecutar(id, request);
+            @Valid @RequestBody CambiarEstadoRequest request,
+            Authentication authentication) {
+        return solicitudService.cambiarEstado(id, request, resolverUsuarioId(authentication));
     }
 
     @PutMapping("/{id}/cerrar")
     public SolicitudResponse cerrarSolicitud(
             @PathVariable Long id,
-            @RequestParam Long usuarioId,
-            @Valid @RequestBody CerrarSolicitudRequest request) {
+            @Valid @RequestBody CerrarSolicitudRequest request,
+            Authentication authentication) {
 
-        return cerrarSolicitudUseCase.ejecutar(id, request, usuarioId);
-    }
-
-    @GetMapping("/{id}/resumen")
-    public String generarResumen(@PathVariable Long id) {
-        return solicitudService.generarResumenSolicitud(id);
+        return solicitudService.cerrarSolicitud(id, request, resolverUsuarioId(authentication));
     }
 
     @Operation(
@@ -144,7 +123,7 @@ public class SolicitudController {
             @RequestParam(defaultValue = "id") String sortBy,
             @RequestParam(defaultValue = "desc") String direction) {
 
-        return consultarSolicitudUseCase.listar(
+        return solicitudService.listarSolicitudes(
                 estado,
                 tipo,
                 prioridad,
@@ -156,14 +135,8 @@ public class SolicitudController {
         );
     }
 
-    @PostMapping("/sugerir-clasificacion")
-    public SugerenciaClasificacionResponse sugerirClasificacion(
-            @Valid @RequestBody SugerirClasificacionRequest request) {
-        return iaService.sugerirClasificacion(request.getDescripcion());
-    }
-
     @GetMapping("/{id}")
     public SolicitudResponse obtenerSolicitudPorId(@PathVariable Long id) {
-        return consultarSolicitudUseCase.obtenerPorId(id);
+        return solicitudService.obtenerSolicitudPorId(id);
     }
 }

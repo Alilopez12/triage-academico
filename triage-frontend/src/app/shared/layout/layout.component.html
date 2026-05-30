@@ -1,0 +1,30 @@
+<mat-sidenav-container class="sidenav-container">
+  <mat-sidenav mode="side" opened class="sidenav">
+    <div class="sidenav-header">
+      <span class="brand-name">Triage Académico</span>
+    </div>
+    <mat-nav-list>
+      <a mat-list-item routerLink="/solicitudes" routerLinkActive="active-link">
+        <span matListItemTitle>Solicitudes</span>
+      </a>
+      @if (isAdmin) {
+        <a mat-list-item routerLink="/usuarios" routerLinkActive="active-link">
+          <span matListItemTitle>Usuarios</span>
+        </a>
+      }
+    </mat-nav-list>
+  </mat-sidenav>
+
+  <mat-sidenav-content class="main-content">
+    <mat-toolbar color="primary" class="toolbar">
+      <span class="toolbar-spacer"></span>
+      <span class="user-name">{{ usuario?.nombre }}</span>
+      <button mat-icon-button (click)="logout()" title="Cerrar sesión">
+      </button>
+    </mat-toolbar>
+
+    <div class="content-area">
+      <router-outlet />
+    </div>
+  </mat-sidenav-content>
+</mat-sidenav-container>

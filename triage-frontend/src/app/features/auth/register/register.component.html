@@ -1,0 +1,90 @@
+<div class="register-container">
+  <mat-card class="register-card">
+    <mat-card-header class="card-header">
+      <div class="logo-section">
+        <h1 class="app-title">Triage Académico</h1>
+        <p class="app-subtitle">Crear una cuenta nueva</p>
+      </div>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="register-form">
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Nombre completo</mat-label>
+          <input matInput formControlName="nombre" placeholder="Tu nombre completo" autocomplete="name" />
+          @if (form.get('nombre')?.hasError('required') && form.get('nombre')?.touched) {
+            <mat-error>El nombre es requerido</mat-error>
+          } @else if (form.get('nombre')?.hasError('minlength') && form.get('nombre')?.touched) {
+            <mat-error>Mínimo 3 caracteres</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Correo electrónico</mat-label>
+          <input matInput type="email" formControlName="email" placeholder="usuario@universidad.edu" autocomplete="email" />
+          @if (form.get('email')?.hasError('required') && form.get('email')?.touched) {
+            <mat-error>El correo es requerido</mat-error>
+          } @else if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
+            <mat-error>Ingrese un correo válido</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Rol</mat-label>
+          <mat-select formControlName="rol">
+            <mat-option value="ESTUDIANTE">Estudiante</mat-option>
+            <mat-option value="RESPONSABLE">Responsable académico</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Contraseña</mat-label>
+          <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" autocomplete="new-password" />
+          <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
+          </button>
+          @if (form.get('password')?.hasError('required') && form.get('password')?.touched) {
+            <mat-error>La contraseña es requerida</mat-error>
+          } @else if (form.get('password')?.hasError('minlength') && form.get('password')?.touched) {
+            <mat-error>Mínimo 8 caracteres</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Confirmar contraseña</mat-label>
+          <input matInput [type]="hideConfirm ? 'password' : 'text'" formControlName="confirmPassword" autocomplete="new-password" />
+          <button mat-icon-button matSuffix type="button" (click)="hideConfirm = !hideConfirm">
+          </button>
+          @if (form.hasError('passwordMismatch') && form.get('confirmPassword')?.touched) {
+            <mat-error>Las contraseñas no coinciden</mat-error>
+          }
+        </mat-form-field>
+
+        @if (errorMessage) {
+          <div class="error-alert">
+            <span>{{ errorMessage }}</span>
+          </div>
+        }
+
+        <button mat-raised-button color="primary" type="submit" class="submit-btn" [disabled]="loading">
+          @if (loading) {
+            <ng-container>
+              <mat-spinner diameter="20" class="spinner"></mat-spinner>
+              <span>Creando cuenta...</span>
+            </ng-container>
+          } @else {
+            <ng-container>
+              <span>Crear cuenta</span>
+            </ng-container>
+          }
+        </button>
+
+        <div class="login-link">
+          ¿Ya tienes cuenta?
+          <a routerLink="/login">Inicia sesión aquí</a>
+        </div>
+
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

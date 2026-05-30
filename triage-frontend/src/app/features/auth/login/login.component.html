@@ -1,0 +1,63 @@
+<div class="login-container">
+  <mat-card class="login-card">
+    <mat-card-header class="card-header">
+      <div class="logo-section">
+        <h1 class="app-title">Triage Académico</h1>
+        <p class="app-subtitle">Sistema de Gestión de Solicitudes</p>
+      </div>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" class="login-form">
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Correo electrónico</mat-label>
+          <input matInput type="email" formControlName="email" placeholder="usuario@universidad.edu" autocomplete="email" />
+          @if (form.get('email')?.hasError('required') && form.get('email')?.touched) {
+            <mat-error>El correo es requerido</mat-error>
+          } @else if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
+            <mat-error>Ingrese un correo válido</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Contraseña</mat-label>
+          <input matInput [type]="hidePassword ? 'password' : 'text'" formControlName="password" autocomplete="current-password" />
+          <button mat-icon-button matSuffix type="button" (click)="hidePassword = !hidePassword">
+          </button>
+          @if (form.get('password')?.hasError('required') && form.get('password')?.touched) {
+            <mat-error>La contraseña es requerida</mat-error>
+          }
+        </mat-form-field>
+
+        @if (errorMessage) {
+          <div class="error-alert">
+            <span>{{ errorMessage }}</span>
+          </div>
+        }
+
+        <button
+          mat-raised-button
+          color="primary"
+          type="submit"
+          class="submit-btn"
+          [disabled]="loading"
+        >
+          @if (loading) {
+            <ng-container>
+              <mat-spinner diameter="20" class="spinner"></mat-spinner>
+              <span>Ingresando...</span>
+            </ng-container>
+          } @else {
+            <ng-container>
+              <span>Ingresar</span>
+            </ng-container>
+          }
+        </button>
+        <div class="register-link">
+          ¿No tienes cuenta?
+          <a routerLink="/register">Regístrate aquí</a>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

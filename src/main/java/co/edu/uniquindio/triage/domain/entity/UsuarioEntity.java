@@ -20,6 +20,9 @@ public class UsuarioEntity {
     @Column(nullable = false, unique = true, length = 120)
     private String email;
 
+    @Column(nullable = false, length = 100)
+    private String password;
+
     @Column(nullable = false)
     private boolean activo;
 
@@ -45,6 +48,14 @@ public class UsuarioEntity {
         this.email = email;
         this.activo = activo;
         this.rol = rol;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
     }
 
     public Long getId() {

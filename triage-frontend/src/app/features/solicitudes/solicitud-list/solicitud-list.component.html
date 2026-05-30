@@ -1,0 +1,131 @@
+<div class="list-container">
+  <div class="page-header">
+    <h2>Solicitudes</h2>
+    @if (esEstudiante) {
+      <a mat-raised-button color="primary" routerLink="nueva">
+        Nueva Solicitud
+      </a>
+    }
+  </div>
+
+  <mat-card class="filter-card">
+    <mat-card-content>
+      <form [formGroup]="filterForm" class="filter-form">
+        <mat-form-field appearance="outline">
+          <mat-label>Estado</mat-label>
+          <mat-select formControlName="estado">
+            <mat-option [value]="null">Todos</mat-option>
+            @for (e of estadoOptions; track e) {
+              <mat-option [value]="e">{{ e }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Tipo</mat-label>
+          <mat-select formControlName="tipo">
+            <mat-option [value]="null">Todos</mat-option>
+            @for (t of tipoOptions; track t) {
+              <mat-option [value]="t">{{ t }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Prioridad</mat-label>
+          <mat-select formControlName="prioridad">
+            <mat-option [value]="null">Todas</mat-option>
+            @for (p of prioridadOptions; track p) {
+              <mat-option [value]="p">{{ p }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <div class="filter-actions">
+          <button mat-raised-button color="primary" type="button" (click)="buscar()">
+            Buscar
+          </button>
+          <button mat-stroked-button type="button" (click)="limpiarFiltros()">
+            Limpiar
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+
+  @if (loading) {
+    <div class="spinner-container">
+      <mat-spinner diameter="48"></mat-spinner>
+    </div>
+  } @else {
+    <mat-card>
+      <table mat-table [dataSource]="dataSource" class="full-width">
+        <ng-container matColumnDef="id">
+          <th mat-header-cell *matHeaderCellDef>#</th>
+          <td mat-cell *matCellDef="let row">{{ row.id }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="tipo">
+          <th mat-header-cell *matHeaderCellDef>Tipo</th>
+          <td mat-cell *matCellDef="let row">{{ row.tipo }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="estado">
+          <th mat-header-cell *matHeaderCellDef>Estado</th>
+          <td mat-cell *matCellDef="let row">
+            <span class="estado-badge estado-{{ row.estado }}">{{ row.estado }}</span>
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="prioridad">
+          <th mat-header-cell *matHeaderCellDef>Prioridad</th>
+          <td mat-cell *matCellDef="let row">
+            @if (row.prioridad) {
+              <span class="prioridad-badge prioridad-{{ row.prioridad }}">{{ row.prioridad }}</span>
+            } @else {
+              <span class="text-muted">-</span>
+            }
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="nombreSolicitante">
+          <th mat-header-cell *matHeaderCellDef>Solicitante</th>
+          <td mat-cell *matCellDef="let row">{{ row.nombreSolicitante }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="fechaRegistro">
+          <th mat-header-cell *matHeaderCellDef>Fecha</th>
+          <td mat-cell *matCellDef="let row">{{ row.fechaRegistro | date:'dd/MM/yyyy HH:mm' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="acciones">
+          <th mat-header-cell *matHeaderCellDef>Acciones</th>
+          <td mat-cell *matCellDef="let row">
+            <a mat-icon-button [routerLink]="row.id" color="primary" title="Ver detalle">
+            </a>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+
+        @if (dataSource.length === 0) {
+          <tr class="mat-row">
+            <td class="mat-cell no-data-cell" [attr.colspan]="displayedColumns.length">
+              No se encontraron solicitudes.
+            </td>
+          </tr>
+        }
+      </table>
+
+      <mat-paginator
+        [length]="totalElements"
+        [pageSize]="pageSize"
+        [pageSizeOptions]="[5, 10, 25, 50]"
+        [pageIndex]="pageIndex"
+        (page)="onPageChange($event)"
+        showFirstLastButtons>
+      </mat-paginator>
+    </mat-card>
+  }
+</div>
